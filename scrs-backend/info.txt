@@ -1,0 +1,1749 @@
+# SCRS Backend - Updated Backend Documentation (2026-06-29)
+
+## Overview
+This backend powers the Smart Complaint Resolution System (SCRS). It provides authentication, complaint management, admin controls, file uploads, and basic security hardening for the full-stack application.
+
+---
+
+## Project Structure
+scrs-backend/
+├── app.js
+├── server.js
+├── package.json
+├── package-lock.json
+├── .env (create manually)
+├── config/
+│   └── db.js
+├── controllers/
+│   ├── authController.js
+│   ├── complaintController.js
+│   └── adminController.js
+├── middleware/
+│   ├── authMiddleware.js
+│   └── uploadMiddleware.js
+├── models/
+│   ├── User.js
+│   └── Complaint.js
+├── routes/
+│   ├── authRoutes.js
+│   ├── complaintRoutes.js
+│   └── adminRoutes.js
+├── uploads/
+└── utils/
+    ├── asyncHandler.js
+    ├── constants.js
+    ├── errorHandler.js
+    └── validators.js
+
+---
+
+## Main Technologies
+- Node.js + Express
+- MongoDB + Mongoose
+- JWT authentication
+- bcryptjs for password hashing
+- multer for file uploads
+- CORS and rate limiting
+
+---
+
+## Environment Variables
+Create a .env file in the backend root:
+
+PORT=5000
+NODE_ENV=development
+MONGO_URI=mongodb://127.0.0.1:27017/scrs_db
+JWT_SECRET=your_super_long_random_secret_key
+JWT_EXPIRES_IN=30d
+FRONTEND_URL=http://localhost:3000
+
+---
+
+## Backend Flow
+
+### 1. Server startup
+- server.js loads environment variables
+- connects to MongoDB using config/db.js
+- starts the Express app from app.js
+
+### 2. App setup
+- app.js creates the Express app
+- enables CORS for the frontend
+- parses JSON request bodies
+- serves uploaded files from /uploads
+- mounts routes under /api/auth, /api/complaints, and /api/admin
+- applies global error handling
+- applies rate limiting to authentication endpoints
+
+### 3. Request handling
+- routes forward requests to controllers
+- controllers use Mongoose models to interact with MongoDB
+- middleware handles authentication and authorization
+- errors are returned as JSON through the error handler
+
+---
+
+## Authentication
+
+### Routes
+- POST /api/auth/register
+- POST /api/auth/login
+- GET /api/auth/me
+
+### Features
+- User registration with validation
+- Login with email/password
+- JWT-based authentication
+- Agent login requires an agent security code
+- Protected routes use the protect middleware
+- Role-based protection uses authorize(...roles)
+
+### User model
+User fields include:
+- name
+- email
+- password
+- role
+- agentSecurityCode
+- createdAt
+
+Security behavior:
+- password and agentSecurityCode are hidden by default
+- password is hashed only when changed
+- comparison is handled by comparePassword()
+
+---
+
+## Complaint Management
+
+### Routes
+- GET /api/complaints
+- POST /api/complaints
+- GET /api/complaints/:id
+- PUT /api/complaints/:id
+- DELETE /api/complaints/:id
+- GET /api/complaints/stats
+
+### Features
+- Regular users can create and view their own complaints
+- Agents and admins can view and manage all complaints
+- Users can edit only open complaints they own
+- Agents/admins can update status, priority, assignment, and resolution notes
+- Complaint attachments are stored and exposed through /uploads
+
+### Complaint model
+Complaint fields include:
+- user
+- title
+- description
+- category
+- status
+- priority
+- assignedTo
+- resolutionNote
+- attachments
+- history
+- timestamps
+
+---
+
+## Admin Management
+
+### Routes
+- GET /api/admin/dashboard
+- GET /api/admin/users
+- GET /api/admin/agents
+- PUT /api/admin/users/:id/role
+- POST /api/admin/agents/:id/generate-code
+- DELETE /api/admin/users/:id
+- PUT /api/admin/complaints/:id/assign
+
+### Features
+- Admin dashboard returns summary counts and recent complaints
+- Admins can view regular users and agents
+- Admins can change user roles
+- Admins can assign complaints to agents
+- Admins can generate agent security codes
+- Admins can delete users and related complaints
+
+---
+
+## Security Hardening
+
+### Recent update (2026-06-29)
+- Added rate limiting to authentication routes
+- Login and registration are now throttled to reduce brute-force attempts
+- The limiter is applied before controller logic runs
+
+---
+
+## Error Handling
+The backend uses a centralized error handler in utils/errorHandler.js.
+Errors are returned as JSON like:
+
+{
+  "status": "error",
+  "message": "Something went wrong"
+}
+
+---
+
+## Notes
+- The backend is ready for frontend integration once MongoDB and environment variables are configured.
+- The main API base URL is /api.
+- Uploaded files are served from /uploads.
+
+---
+
+## Backend Source Code Reference
+
+### 1. Entry point: server.js
+```js
+require("dotenv").config();
+const connectDB = require("./config/db");
+const app = require("./app");
+
+connectDB();
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+```
+
+### 2. App setup: app.js
+```js
+const express = require('express');
+const rateLimit = require('express-rate-limit');
+const { errorHandler, AppError } = require('./utils/errorHandler');
+const authRoutes = require('./routes/authRoutes');
+const complaintRoutes = require('./routes/complaintRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+
+const app = express();
+const cors = require('cors');
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: {
+    status: 'error',
+    message: 'Too many authentication attempts. Please try again later.',
+  },
+});
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/auth', authLimiter);
+app.use('/api/auth', authRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/admin', adminRoutes);
+
+app.get('/', (req, res) => {
+  res.json({ message: 'API is running' });
+});
+
+app.use((req, res, next) => {
+  const err = new AppError(`Cannot ${req.method} ${req.originalUrl}`, 404);
+  next(err);
+});
+
+app.use(errorHandler);
+module.exports = app;
+```
+
+### 3. Database connection: config/db.js
+```js
+const mongoose = require('mongoose');
+
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGO_URI);
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+  } catch (error) {
+    console.error(`MongoDB Connection Failed: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+module.exports = connectDB;
+```
+
+### 4. Authentication middleware: middleware/authMiddleware.js
+```js
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const { AppError } = require('../utils/errorHandler');
+
+const protect = async (req, res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+      throw new AppError('Not authorized, token missing', 401);
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      throw new AppError('Not authorized, token invalid', 401);
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      throw new AppError('Not authorized, user not found', 401);
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      throw new AppError('Not authorized to access this route', 403);
+    }
+    next();
+  };
+};
+
+module.exports = { protect, authorize };
+```
+
+### 5. Upload middleware: middleware/uploadMiddleware.js
+```js
+const multer = require('multer');
+const path = require('path');
+const { AppError } = require('../utils/errorHandler');
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowedFileTypes = /jpeg|jpg|png|pdf/;
+  const extname = allowedFileTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedFileTypes.test(file.mimetype);
+
+  if (extname && mimetype) {
+    cb(null, true);
+  } else {
+    cb(new AppError('Only .png, .jpg, .jpeg and .pdf format allowed!', 400), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: fileFilter
+});
+
+module.exports = upload;
+```
+
+### 6. Auth controller: controllers/authController.js
+```js
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const { AppError } = require('../utils/errorHandler');
+const { validateEmail, validatePassword, validateName } = require('../utils/validators');
+const { ROLES } = require('../utils/constants');
+
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '30d'
+  });
+};
+
+const register = async (req, res) => {
+  let { name, email, password } = req.body;
+  name = validateName(name);
+  email = validateEmail(email);
+  password = validatePassword(password);
+
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    throw new AppError('User already exists', 400);
+  }
+
+  const user = await User.create({ name, email, password });
+
+  res.status(201).json({
+    success: true,
+    token: generateToken(user._id),
+    data: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
+  });
+};
+
+const login = async (req, res) => {
+  let { email, password, agentSecurityCode } = req.body;
+  email = validateEmail(email);
+  password = validatePassword(password);
+
+  const user = await User.findOne({ email }).select('+password +agentSecurityCode');
+  if (!user) {
+    throw new AppError('Invalid credentials', 401);
+  }
+
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    throw new AppError('Invalid credentials', 401);
+  }
+
+  if (user.role === ROLES.AGENT) {
+    if (!agentSecurityCode) {
+      throw new AppError('Security code required for agents', 401);
+    }
+    if (user.agentSecurityCode !== agentSecurityCode) {
+      throw new AppError('Invalid security code', 401);
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    token: generateToken(user._id),
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    }
+  });
+};
+
+const getMe = async (req, res) => {
+  res.status(200).json({
+    success: true,
+    data: req.user,
+  });
+};
+
+module.exports = { register, login, getMe };
+```
+
+### 7. User model: models/User.js
+```js
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const { ROLES } = require('../utils/constants');
+
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: [true, 'Please provide a name'] },
+  email: { type: String, required: [true, 'Please provide an email'], unique: true, lowercase: true },
+  password: { type: String, required: [true, 'Please provide a password'], minlength: 8, select: false },
+  role: { type: String, enum: Object.values(ROLES), default: ROLES.USER },
+  agentSecurityCode: { type: String, select: false, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+userSchema.statics.generateSecurityCode = function () {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
+module.exports = mongoose.model('User', userSchema);
+```
+
+### 8. Complaint model: models/Complaint.js
+```js
+const mongoose = require('mongoose');
+const { COMPLAINT_CATEGORY, COMPLAINT_STATUS, COMPLAINT_PRIORITY, DEFAULTS } = require('../utils/constants');
+
+const complaintSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: [true, 'Complaint must belong to a user'] },
+  title: { type: String, required: [true, 'Please provide a title'], trim: true },
+  description: { type: String, required: [true, 'Please provide a description'], trim: true },
+  category: { type: String, required: [true, 'Please provide a category'], enum: Object.values(COMPLAINT_CATEGORY) },
+  status: { type: String, enum: Object.values(COMPLAINT_STATUS), default: DEFAULTS.DEFAULT_STATUS },
+  priority: { type: String, enum: Object.values(COMPLAINT_PRIORITY), default: DEFAULTS.DEFAULT_PRIORITY },
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  resolutionNote: { type: String, default: '' },
+  history: [{ action: { type: String, required: true }, prevValue: { type: String }, newValue: { type: String }, performedBy: { type: String, required: true }, role: { type: String, required: true }, timestamp: { type: Date, default: Date.now } }],
+  attachments: [{ filename: { type: String, required: true }, filepath: { type: String, required: true }, uploadedAt: { type: Date, default: Date.now } }],
+}, { timestamps: true });
+
+module.exports = mongoose.model('Complaint', complaintSchema);
+```
+
+### 9. Shared constants: utils/constants.js
+```js
+const ROLES = {
+  USER: 'user',
+  AGENT: 'agent',
+  ADMIN: 'admin',
+};
+
+const COMPLAINT_STATUS = {
+  OPEN: 'Open',
+  IN_PROGRESS: 'In Progress',
+  RESOLVED: 'Resolved',
+  CLOSED: 'Closed',
+};
+
+const COMPLAINT_CATEGORY = {
+  TECHNICAL: 'technical',
+  INFRASTRUCTURE: 'infrastructure',
+  ELECTRICAL: 'electrical',
+  NETWORK: 'network',
+  SOFTWARE: 'software',
+  HARDWARE: 'hardware',
+  MAINTENANCE: 'maintenance',
+  SECURITY: 'security',
+  HOUSEKEEPING: 'housekeeping',
+  FINANCE: 'finance',
+  HR: 'hr',
+  GENERAL: 'general',
+  OTHER: 'other',
+};
+
+const COMPLAINT_PRIORITY = {
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  CRITICAL: 'critical',
+};
+
+const DEFAULTS = {
+  DEFAULT_PRIORITY: COMPLAINT_PRIORITY.MEDIUM,
+  DEFAULT_ROLE: ROLES.USER,
+  DEFAULT_STATUS: COMPLAINT_STATUS.OPEN,
+};
+
+module.exports = { ROLES, COMPLAINT_STATUS, COMPLAINT_CATEGORY, COMPLAINT_PRIORITY, DEFAULTS };
+```
+
+### 10. Async wrapper: utils/asyncHandler.js
+```js
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+module.exports = asyncHandler;
+```
+
+### 11. Error handler: utils/errorHandler.js
+```js
+class AppError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode || 500;
+    this.status = `${this.statusCode}`.startsWith('4') ? 'fail' : 'error';
+    this.isOperational = true;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+const errorHandler = (err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  const status = err.status || 'error';
+  res.status(statusCode).json({
+    status,
+    message: err.message || 'Internal Server Error',
+  });
+};
+
+module.exports = { errorHandler, AppError };
+```
+
+### 12. Validators: utils/validators.js
+```js
+const { AppError } = require('./errorHandler');
+const { COMPLAINT_CATEGORY, COMPLAINT_STATUS, COMPLAINT_PRIORITY } = require('./constants');
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const validateEmail = (email) => {
+  if (!email || typeof email !== 'string') {
+    throw new AppError('Email is required', 400);
+  }
+  email = email.trim();
+  if (!EMAIL_REGEX.test(email)) {
+    throw new AppError('Invalid email format', 400);
+  }
+  if (email.length > 254) {
+    throw new AppError('Email is too long', 400);
+  }
+  return email;
+};
+
+const validatePassword = (password) => {
+  if (!password || typeof password !== 'string') {
+    throw new AppError('Password is required', 400);
+  }
+  if (password.length < 6) {
+    throw new AppError('Password must be at least 6 characters', 400);
+  }
+  if (password.length > 128) {
+    throw new AppError('Password is too long', 400);
+  }
+  return password;
+};
+
+const validateName = (name) => {
+  if (!name || typeof name !== 'string') {
+    throw new AppError('Name is required', 400);
+  }
+  name = name.trim();
+  if (name.length < 2) {
+    throw new AppError('Name must be at least 2 characters', 400);
+  }
+  if (name.length > 100) {
+    throw new AppError('Name is too long', 400);
+  }
+  if (!/^[a-zA-Z\s\-']+$/.test(name)) {
+    throw new AppError('Name contains invalid characters', 400);
+  }
+  return name;
+};
+
+const validateComplaintTitle = (title) => {
+  if (!title || typeof title !== 'string') {
+    throw new AppError('Complaint title is required', 400);
+  }
+  title = title.trim();
+  if (title.length < 5) {
+    throw new AppError('Complaint title must be at least 5 characters', 400);
+  }
+  if (title.length > 200) {
+    throw new AppError('Complaint title is too long (max 200 characters)', 400);
+  }
+  return title;
+};
+
+const validateComplaintDescription = (description) => {
+  if (!description || typeof description !== 'string') {
+    throw new AppError('Complaint description is required', 400);
+  }
+  description = description.trim();
+  if (description.length < 10) {
+    throw new AppError('Complaint description must be at least 10 characters', 400);
+  }
+  if (description.length > 2000) {
+    throw new AppError('Complaint description is too long (max 2000 characters)', 400);
+  }
+  return description;
+};
+
+const validateCategory = (category) => {
+  if (!category || typeof category !== 'string') {
+    throw new AppError('Category is required', 400);
+  }
+  category = category.toLowerCase().trim();
+  if (!VALID_CATEGORIES.includes(category)) {
+    throw new AppError(`Category must be one of: ${VALID_CATEGORIES.join(', ')}`, 400);
+  }
+  return category;
+};
+
+const validateStatus = (status) => {
+  if (!status || typeof status !== 'string') {
+    throw new AppError('Status is required', 400);
+  }
+  status = status.trim();
+  if (!VALID_STATUSES.includes(status)) {
+    throw new AppError(`Status must be one of: ${VALID_STATUSES.join(', ')}`, 400);
+  }
+  return status;
+};
+
+const validatePriority = (priority) => {
+  if (!priority || typeof priority !== 'string') {
+    throw new AppError('Priority is required', 400);
+  }
+  priority = priority.toLowerCase().trim();
+  if (!VALID_PRIORITIES.includes(priority)) {
+    throw new AppError(`Priority must be one of: ${VALID_PRIORITIES.join(', ')}`, 400);
+  }
+  return priority;
+};
+
+module.exports = {
+  validateEmail,
+  validatePassword,
+  validateName,
+  validateComplaintTitle,
+  validateComplaintDescription,
+  validateCategory,
+  validateStatus,
+  validatePriority,
+  VALID_CATEGORIES,
+  VALID_STATUSES,
+  VALID_PRIORITIES,
+};
+```
+
+### 13. Auth routes: routes/authRoutes.js
+```js
+const express = require('express');
+const { register, login, getMe } = require('../controllers/authController');
+const { protect } = require('../middleware/authMiddleware');
+const asyncHandler = require('../utils/asyncHandler');
+
+const router = express.Router();
+
+router.post('/register', asyncHandler(register));
+router.post('/login', asyncHandler(login));
+router.get('/me', protect, asyncHandler(getMe));
+
+module.exports = router;
+```
+
+### 14. Complaint routes: routes/complaintRoutes.js
+```js
+const express = require('express');
+const {
+  createComplaint,
+  getAllComplaints,
+  getComplaintById,
+  updateComplaint,
+  deleteComplaint,
+  getComplaintStats,
+} = require('../controllers/complaintController');
+const { protect, authorize } = require('../middleware/authMiddleware');
+const asyncHandler = require('../utils/asyncHandler');
+const upload = require('../middleware/uploadMiddleware');
+
+const router = express.Router();
+
+router.use(protect);
+
+router.get('/stats', authorize('admin', 'agent'), asyncHandler(getComplaintStats));
+
+router.route('/')
+  .get(asyncHandler(getAllComplaints))
+  .post(upload.array('attachments', 5), asyncHandler(createComplaint));
+
+router.route('/:id')
+  .get(asyncHandler(getComplaintById))
+  .put(asyncHandler(updateComplaint))
+  .delete(asyncHandler(deleteComplaint));
+
+module.exports = router;
+```
+
+### 15. Admin routes: routes/adminRoutes.js
+```js
+const express = require('express');
+const {
+  getDashboard,
+  getAllUsers,
+  getAllAgents,
+  updateUserRole,
+  assignComplaint,
+  generateAgentSecurityCode,
+  deleteUser,
+} = require('../controllers/adminController');
+const { protect, authorize } = require('../middleware/authMiddleware');
+const asyncHandler = require('../utils/asyncHandler');
+const { ROLES } = require('../utils/constants');
+
+const router = express.Router();
+
+router.use(protect);
+router.use(authorize(ROLES.ADMIN));
+
+router.get('/dashboard', asyncHandler(getDashboard));
+router.get('/users', asyncHandler(getAllUsers));
+router.get('/agents', asyncHandler(getAllAgents));
+router.put('/users/:id/role', asyncHandler(updateUserRole));
+router.post('/agents/:id/generate-code', asyncHandler(generateAgentSecurityCode));
+router.delete('/users/:id', asyncHandler(deleteUser));
+router.put('/complaints/:id/assign', asyncHandler(assignComplaint));
+
+module.exports = router;
+```
+
+### 16. Complaint controller: controllers/complaintController.js
+```js
+const Complaint = require('../models/Complaint');
+const { AppError } = require('../utils/errorHandler');
+const {
+  validateComplaintTitle,
+  validateComplaintDescription,
+  validateCategory,
+  validateStatus,
+  validatePriority,
+} = require('../utils/validators');
+const { ROLES, COMPLAINT_STATUS } = require('../utils/constants');
+
+const createComplaint = async (req, res) => {
+  if (req.user.role !== ROLES.USER) {
+    throw new AppError('Only regular users can submit complaints', 403);
+  }
+
+  let { title, description, category, priority } = req.body;
+  title = validateComplaintTitle(title);
+  description = validateComplaintDescription(description);
+  category = validateCategory(category);
+
+  if (priority) {
+    priority = validatePriority(priority);
+  }
+
+  const attachments = [];
+  if (req.files && req.files.length > 0) {
+    req.files.forEach(file => {
+      attachments.push({
+        filename: file.originalname,
+        filepath: `/uploads/${file.filename}`
+      });
+    });
+  }
+
+  const complaint = await Complaint.create({
+    title,
+    description,
+    category,
+    priority,
+    user: req.user._id,
+    attachments,
+    history: [{ action: 'Complaint Created', performedBy: req.user.name, role: req.user.role }]
+  });
+
+  res.status(201).json({ success: true, message: 'Complaint submitted successfully', complaint });
+};
+
+const getAllComplaints = async (req, res) => {
+  let filter = {};
+
+  if (req.user.role === ROLES.USER) {
+    filter = { user: req.user._id };
+  } else if (req.user.role === ROLES.AGENT || req.user.role === ROLES.ADMIN) {
+    filter = {};
+  } else {
+    throw new AppError(`Cannot fetch complaints with unknown role: ${req.user.role}`, 403);
+  }
+
+  const complaints = await Complaint.find(filter)
+    .populate('user', 'name email')
+    .populate('assignedTo', 'name email')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({ success: true, count: complaints.length, complaints });
+};
+
+const getComplaintById = async (req, res) => {
+  const complaint = await Complaint.findById(req.params.id)
+    .populate('user', 'name email')
+    .populate('assignedTo', 'name email');
+
+  if (!complaint) {
+    throw new AppError('Complaint not found', 404);
+  }
+
+  if (req.user.role === ROLES.USER) {
+    if (complaint.user._id.toString() !== req.user._id.toString()) {
+      throw new AppError('You are not authorized to view this complaint', 403);
+    }
+  } else if (req.user.role === ROLES.AGENT || req.user.role === ROLES.ADMIN) {
+  } else {
+    throw new AppError(`Cannot view complaint with unknown role: ${req.user.role}`, 403);
+  }
+
+  res.status(200).json({ success: true, complaint });
+};
+
+const updateComplaint = async (req, res) => {
+  const complaint = await Complaint.findById(req.params.id);
+  if (!complaint) {
+    throw new AppError('Complaint not found', 404);
+  }
+
+  const { role, _id: userId } = req.user;
+
+  if (role === ROLES.USER) {
+    if (complaint.user.toString() !== userId.toString()) {
+      throw new AppError('You are not authorized to update this complaint', 403);
+    }
+
+    if (complaint.status !== COMPLAINT_STATUS.OPEN) {
+      throw new AppError('You cannot edit a complaint that is no longer Open', 400);
+    }
+
+    let { title, description, category } = req.body;
+    if (title) {
+      title = validateComplaintTitle(title);
+      complaint.title = title;
+    }
+    if (description) {
+      description = validateComplaintDescription(description);
+      complaint.description = description;
+    }
+    if (category) {
+      category = validateCategory(category);
+      complaint.category = category;
+    }
+  } else if (role === ROLES.AGENT || role === ROLES.ADMIN) {
+    let { status, priority, assignedTo, resolutionNote } = req.body;
+    if (status) {
+      status = validateStatus(status);
+      if (complaint.status !== status) {
+        complaint.history.push({ action: 'Status Changed', prevValue: complaint.status, newValue: status, performedBy: req.user.name, role: req.user.role });
+        complaint.status = status;
+      }
+    }
+    if (priority) {
+      priority = validatePriority(priority);
+      if (complaint.priority !== priority) {
+        complaint.history.push({ action: 'Priority Changed', prevValue: complaint.priority, newValue: priority, performedBy: req.user.name, role: req.user.role });
+        complaint.priority = priority;
+      }
+    }
+    if (assignedTo !== undefined && complaint.assignedTo?.toString() !== assignedTo?.toString()) {
+      complaint.history.push({ action: 'Assigned to Agent', newValue: assignedTo ? 'Agent ID: ' + assignedTo : 'Unassigned', performedBy: req.user.name, role: req.user.role });
+      complaint.assignedTo = assignedTo;
+    }
+    if (resolutionNote !== undefined) {
+      if (resolutionNote && typeof resolutionNote === 'string') {
+        resolutionNote = resolutionNote.trim();
+        if (resolutionNote.length > 1000) {
+          throw new AppError('Resolution note is too long (max 1000 characters)', 400);
+        }
+      }
+      if (complaint.resolutionNote !== resolutionNote) {
+        complaint.history.push({ action: 'Resolution Note Added', newValue: resolutionNote, performedBy: req.user.name, role: req.user.role });
+        complaint.resolutionNote = resolutionNote;
+      }
+    }
+  } else {
+    throw new AppError(`Cannot update complaint with unknown role: ${role}`, 403);
+  }
+
+  await complaint.save();
+
+  res.status(200).json({ success: true, message: 'Complaint updated successfully', complaint });
+};
+
+const deleteComplaint = async (req, res) => {
+  const complaint = await Complaint.findById(req.params.id);
+  if (!complaint) {
+    throw new AppError('Complaint not found', 404);
+  }
+
+  const { role, _id: userId } = req.user;
+
+  if (role === ROLES.USER) {
+    if (complaint.user.toString() !== userId.toString()) {
+      throw new AppError('You are not authorized to delete this complaint', 403);
+    }
+    if (complaint.status !== COMPLAINT_STATUS.OPEN) {
+      throw new AppError('You can only delete an Open complaint', 400);
+    }
+  } else if (role === ROLES.AGENT) {
+    throw new AppError('Agents are not authorized to delete complaints', 403);
+  } else if (role === ROLES.ADMIN) {
+  } else {
+    throw new AppError(`Cannot delete complaint with unknown role: ${role}`, 403);
+  }
+
+  await complaint.deleteOne();
+
+  res.status(200).json({ success: true, message: 'Complaint deleted successfully' });
+};
+
+const getComplaintStats = async (req, res) => {
+  const stats = await Complaint.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]);
+  res.status(200).json({ success: true, stats });
+};
+
+module.exports = { createComplaint, getAllComplaints, getComplaintById, updateComplaint, deleteComplaint, getComplaintStats };
+```
+
+### 17. Admin controller: controllers/adminController.js
+```js
+const User = require('../models/User');
+const Complaint = require('../models/Complaint');
+const { AppError } = require('../utils/errorHandler');
+const { ROLES, COMPLAINT_STATUS } = require('../utils/constants');
+
+const getDashboard = async (req, res) => {
+  const [
+    totalUsers,
+    totalAgents,
+    totalComplaints,
+    openComplaints,
+    inProgressComplaints,
+    resolvedComplaints,
+    closedComplaints,
+    complaintsByStatus,
+    complaintsByCategory,
+    recentComplaints,
+  ] = await Promise.all([
+    User.countDocuments({ role: ROLES.USER }),
+    User.countDocuments({ role: ROLES.AGENT }),
+    Complaint.countDocuments(),
+    Complaint.countDocuments({ status: COMPLAINT_STATUS.OPEN }),
+    Complaint.countDocuments({ status: COMPLAINT_STATUS.IN_PROGRESS }),
+    Complaint.countDocuments({ status: COMPLAINT_STATUS.RESOLVED }),
+    Complaint.countDocuments({ status: COMPLAINT_STATUS.CLOSED }),
+    Complaint.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
+    Complaint.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
+    Complaint.find().populate('user', 'name email').sort({ createdAt: -1 }).limit(5),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      dashboard: {
+        summary: { totalUsers, totalAgents, totalComplaints },
+        complaintsByStatus,
+        complaintsByCategory,
+        recentComplaints,
+      },
+    },
+  });
+};
+
+const getAllUsers = async (req, res) => {
+  const users = await User.aggregate([
+    { $match: { role: 'user' } },
+    { $lookup: { from: 'complaints', localField: '_id', foreignField: 'user', as: 'userComplaints' } },
+    { $addFields: { complaintCount: { $size: '$userComplaints' } } },
+    { $project: { userComplaints: 0 } },
+    { $sort: { createdAt: -1 } }
+  ]);
+
+  res.status(200).json({ success: true, count: users.length, users });
+};
+
+const getAllAgents = async (req, res) => {
+  const agents = await User.aggregate([
+    { $match: { role: 'agent' } },
+    { $lookup: { from: 'complaints', localField: '_id', foreignField: 'assignedTo', as: 'assignedComplaints' } },
+    { $addFields: { complaintCount: { $size: '$assignedComplaints' } } },
+    { $project: { assignedComplaints: 0 } },
+    { $sort: { createdAt: -1 } }
+  ]);
+
+  res.status(200).json({ success: true, count: agents.length, agents });
+};
+
+const updateUserRole = async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body;
+  const allowedRoles = Object.values(ROLES);
+
+  if (!role || !allowedRoles.includes(role)) {
+    throw new AppError(`Role must be one of: ${allowedRoles.join(', ')}`, 400);
+  }
+
+  if (id.toString() === req.user._id.toString()) {
+    throw new AppError('You cannot change your own role', 400);
+  }
+
+  const user = await User.findById(id);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  user.role = role;
+  await user.save();
+
+  res.status(200).json({ success: true, message: `User role updated to '${role}' successfully`, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+};
+
+const assignComplaint = async (req, res) => {
+  const { id } = req.params;
+  const { agentId } = req.body;
+
+  if (!agentId) {
+    throw new AppError('Please provide an agentId in the request body', 400);
+  }
+
+  const agent = await User.findById(agentId);
+  if (!agent) {
+    throw new AppError('Agent not found', 404);
+  }
+  if (agent.role !== 'agent') {
+    throw new AppError('The provided ID does not belong to an agent', 400);
+  }
+
+  const complaint = await Complaint.findById(id);
+  if (!complaint) {
+    throw new AppError('Complaint not found', 404);
+  }
+
+  complaint.assignedTo = agentId;
+  complaint.status = 'In Progress';
+  await complaint.save();
+  await complaint.populate('assignedTo', 'name email');
+
+  res.status(200).json({ success: true, message: 'Complaint assigned to agent successfully', complaint });
+};
+
+const generateAgentSecurityCode = async (req, res) => {
+  const { id } = req.params;
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  if (user.role !== 'agent') {
+    throw new AppError('This user is not an agent', 400);
+  }
+
+  const securityCode = User.generateSecurityCode();
+  user.agentSecurityCode = securityCode;
+  await user.save();
+
+  res.status(200).json({ success: true, message: `Security code generated for agent ${user.name}`, agentName: user.name, agentEmail: user.email, securityCode });
+};
+
+const deleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  if (id.toString() === req.user._id.toString()) {
+    throw new AppError('You cannot delete your own account', 400);
+  }
+
+  const user = await User.findById(id);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  const deletedComplaints = await Complaint.deleteMany({ user: id });
+  await user.deleteOne();
+
+  res.status(200).json({ success: true, message: `User '${user.name}' and their ${deletedComplaints.deletedCount} complaint(s) have been deleted` });
+};
+
+module.exports = { getDashboard, getAllUsers, getAllAgents, updateUserRole, assignComplaint, generateAgentSecurityCode, deleteUser };
+```
+```
+
+### CURRENT CODE - routes/authRoutes.js
+
+```js
+const express = require('express');
+const { register, login, getMe } = require('../controllers/authController');
+const { protect } = require('../middleware/authMiddleware');
+const asyncHandler = require('../utils/asyncHandler');
+
+const router = express.Router();
+
+router.post('/register', asyncHandler(register));
+router.post('/login', asyncHandler(login));
+router.get('/me', protect, asyncHandler(getMe));
+
+module.exports = router;
+```
+
+**Endpoints:**
+- `POST /api/auth/register` → Create user, get token
+- `POST /api/auth/login` → Authenticate, get token
+- `GET /api/auth/me` → Get current user (protected)
+
+### CURRENT CODE - middleware/authMiddleware.js
+
+```js
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const { AppError } = require('../utils/errorHandler');
+
+const protect = async (req, res, next) => {
+  try {
+    let token;
+
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+      throw new AppError('Not authorized, token missing', 401);
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      throw new AppError('Not authorized, token invalid', 401);
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      throw new AppError('Not authorized, user not found', 401);
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      throw new AppError('Not authorized to access this route', 403);
+    }
+    next();
+  };
+};
+
+module.exports = {
+  protect,
+  authorize,
+};
+```
+
+**What It Does:**
+- `protect` extracts token from Authorization header, verifies it, loads user
+- `authorize` checks user role for access control
+
+---
+
+## ENVIRONMENT SETUP
+
+### Create `.env` file in project root:
+```
+PORT=5000
+NODE_ENV=development
+MONGO_URI=mongodb://127.0.0.1:27017/scrs_db
+JWT_SECRET=your_super_long_random_secret_key_here
+JWT_EXPIRES_IN=30d
+```
+
+**To generate a strong JWT_SECRET:**
+```text
+Use a strong random secret value in your environment configuration.
+```
+
+---
+
+## TESTING
+
+**Start server:**
+```text
+Start the backend service using your configured runtime.
+```
+
+**Test endpoints (in Postman or curl):**
+
+1. Register:
+```
+POST http://localhost:5000/api/auth/register
+{
+  "name": "John",
+  "email": "john@example.com",
+  "password": "password123"
+}
+```
+
+2. Login:
+```
+POST http://localhost:5000/api/auth/login
+{
+  "email": "john@example.com",
+  "password": "password123"
+}
+```
+
+3. Get me (copy token from login response):
+```
+GET http://localhost:5000/api/auth/me
+Header: Authorization: Bearer <token>
+```
+
+---
+
+## SUMMARY OF CHANGES (2026-06-23)
+
+✅ FIXED: Pre-save hook in models/User.js - password hashing now correct
+✅ VERIFIED: All auth flows working
+✅ DOCUMENTED: Full code review and current state
+✅ READY: Phase 3 (Complaint CRUD) can begin
+
+All files in the repository reflect the latest code as of 2026-06-23.
+
+================================================================================
+========================= PHASE 2: AUTHENTICATION COMPLETE =====================
+================================================================================
+
+---
+
+## PHASE 3: Complaint Model & CRUD (2026-06-23)
+
+### File Map
+```
+scrs-backend/
+├── models/
+│   ├── User.js              ← Phase 2 (role enum updated: added 'agent')
+│   └── Complaint.js         ← NEW — complaint schema
+├── controllers/
+│   ├── authController.js    ← Phase 2 (unchanged)
+│   └── complaintController.js  ← NEW — 6 controller functions
+├── routes/
+│   ├── authRoutes.js        ← Phase 2 (unchanged)
+│   └── complaintRoutes.js   ← NEW — complaint URL definitions
+└── app.js                   ← MODIFIED — 2 lines added
+```
+
+---
+
+### Step 1 — models/Complaint.js — Schema Design
+
+Every complaint document in MongoDB has this shape:
+
+```js
+{
+  user:           ObjectId  → references User._id (who filed it)
+  title:          String    → short summary
+  description:    String    → full details
+  category:       String    → enum: Technical | Billing | Service | Delivery | Other
+  status:         String    → enum: Open | In Progress | Resolved | Closed
+  priority:       String    → enum: Low | Medium | High
+  assignedTo:     ObjectId  → references User._id (which agent handles it)
+  resolutionNote: String    → agent's closing note
+  createdAt:      Date      → auto (timestamps: true)
+  updatedAt:      Date      → auto (timestamps: true)
+}
+```
+
+**Why `ref: "User"` on `user` and `assignedTo`?**
+MongoDB doesn't do joins like SQL. `ref` enables `.populate()`:
+```js
+Complaint.findById(id).populate("user", "name email")
+```
+Mongoose replaces the raw ObjectId with the actual User document fields.
+
+**Why `default: null` on `assignedTo`?**
+When first submitted, no agent is assigned. `null` explicitly communicates "unassigned".
+
+---
+
+### Step 2 — controllers/complaintController.js — 6 Functions
+
+#### `createComplaint` — POST /api/complaints
+```js
+user: req.user._id   // pulled from protect middleware — never trust client ID
+```
+
+#### `getAllComplaints` — GET /api/complaints
+```js
+let filter = {};
+if (req.user.role === "user") {
+  filter = { user: req.user._id };
+}
+const complaints = await Complaint.find(filter).sort({ createdAt: -1 });
+```
+Dynamic query filter — same route, different result per role. `-1` = newest first.
+
+#### `getComplaintById` — GET /api/complaints/:id
+```js
+complaint.user._id.toString() !== req.user._id.toString()
+```
+`.toString()` required — ObjectIds are objects; `===` compares references not values.
+
+#### `updateComplaint` — PUT /api/complaints/:id
+
+| Role | Allowed fields | Condition |
+|---|---|---|
+| User | title, description, category | Only if status === "Open" |
+| Agent / Admin | status, priority, assignedTo, resolutionNote | Any time |
+
+Uses `complaint.save()` (not `findByIdAndUpdate`) — runs validators and pre-save hooks.
+
+#### `deleteComplaint` — DELETE /api/complaints/:id
+
+| Role | Can delete | Condition |
+|---|---|---|
+| User | Own complaints only | status === "Open" |
+| Agent | ❌ Cannot delete | Agents resolve, not delete |
+| Admin | Any complaint | No condition |
+
+Uses `complaint.deleteOne()` — document already in memory, no second DB query.
+
+#### `getComplaintStats` — GET /api/complaints/stats
+```js
+await Complaint.aggregate([
+  { $group: { _id: "$status", count: { $sum: 1 } } }
+])
+```
+MongoDB Aggregation Pipeline — equivalent to `GROUP BY status` in SQL.
+
+Result example:
+```json
+[
+  { "_id": "Open",        "count": 12 },
+  { "_id": "In Progress", "count": 5  },
+  { "_id": "Resolved",    "count": 23 },
+  { "_id": "Closed",      "count": 8  }
+]
+```
+
+---
+
+### Step 3 — routes/complaintRoutes.js — Critical Design Decisions
+
+**`router.use(protect)` applied once at top — covers all routes below.**
+
+**`/stats` MUST come before `/:id`:**
+```js
+router.get("/stats", authorize("admin", "agent"), getComplaintStats); // ✅ first
+router.route("/:id").get(getComplaintById)...                         // ✅ second
+```
+If `/:id` is first, `/stats` matches as `{ id: "stats" }` → `Complaint.findById("stats")` → MongoDB CastError.
+
+---
+
+### Step 4 — app.js Changes (2 lines added)
+
+```js
+// Line 1 added — import
+const complaintRoutes = require('./routes/complaintRoutes');
+
+// Line 2 added — mount
+app.use('/api/complaints', complaintRoutes);
+```
+
+---
+
+### Step 5 — Role Permission Table
+
+| Action | User | Agent | Admin |
+|---|---|---|---|
+| Create complaint | ✅ Own | ✅ Own | ✅ |
+| View all complaints | ❌ Own only | ✅ All | ✅ All |
+| View by ID | ✅ Own only | ✅ All | ✅ All |
+| Edit title/desc | ✅ Own + Open | ❌ | ✅ |
+| Update status/priority | ❌ | ✅ | ✅ |
+| Assign to agent | ❌ | ❌ | ✅ |
+| Delete | ✅ Own + Open | ❌ | ✅ All |
+| View stats | ❌ | ✅ | ✅ |
+
+---
+
+### Step 6 — Complete API Endpoints (Phase 3)
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | /api/complaints | Any logged-in user | Create complaint |
+| GET | /api/complaints | Any logged-in user | Get all (filtered by role) |
+| GET | /api/complaints/stats | Admin / Agent | Aggregated stats by status |
+| GET | /api/complaints/:id | Any logged-in user | Get single (own or all) |
+| PUT | /api/complaints/:id | Any logged-in user | Update (role-restricted fields) |
+| DELETE | /api/complaints/:id | User (own/Open) / Admin | Delete complaint |
+
+---
+
+### Step 7 — models/User.js Change
+
+Added `'agent'` to role enum to support the new agent role:
+
+```js
+// BEFORE
+enum: ['user', 'admin']
+
+// AFTER
+enum: ['user', 'agent', 'admin']
+```
+
+---
+
+## SUMMARY OF CHANGES (Phase 3 — 2026-06-23)
+
+✅ CREATED: models/Complaint.js — complaint schema with ref, enums, timestamps
+✅ CREATED: controllers/complaintController.js — 6 functions with RBAC
+✅ CREATED: routes/complaintRoutes.js — protect + /stats before /:id
+✅ MODIFIED: app.js — 2 lines to mount /api/complaints
+✅ MODIFIED: models/User.js — added 'agent' to role enum
+
+================================================================================
+========================== PHASE 3: COMPLAINT CRUD COMPLETE ====================
+================================================================================
+
+
+---
+
+## PHASE 4: Admin Panel (2026-06-24)
+
+### What Phase 4 Adds
+
+Phase 4 introduces a complete Admin Panel for the SCRS backend.
+Only users with role === 'admin' can access any of these endpoints.
+
+### New Files Added
+
+```
+controllers/adminController.js   ← NEW — 6 admin functions
+routes/adminRoutes.js            ← NEW — admin URL definitions
+```
+
+### Modified Files
+
+```
+app.js   ← 3 lines added (import + mount at /api/admin)
+```
+
+---
+
+### WHY a Separate Admin Controller?
+
+Each controller has one clear responsibility.
+- `authController.js`     → handles login, register, getMe
+- `complaintController.js` → handles CRUD on complaints
+- `adminController.js`    → handles admin panel operations
+
+Mixing admin logic into the other controllers would make them large and
+confusing. Keeping admin logic in its own file makes it easy to find and maintain.
+
+---
+
+### RBAC (Role-Based Access Control) Explained
+
+RBAC = Role-Based Access Control.
+The concept: users have roles. Each role has different permissions.
+
+In this project:
+| Role  | Who they are          | What they can do                              |
+|-------|-----------------------|-----------------------------------------------|
+| user  | regular customer      | file and manage their own complaints          |
+| agent | support staff         | view all complaints, update status            |
+| admin | system administrator  | manage users, assign complaints, see dashboard |
+
+The admin panel enforces this by using TWO middleware layers on every route:
+1. protect       → checks JWT token → sets req.user
+2. authorize('admin') → checks req.user.role === 'admin'
+
+If either check fails, the controller never runs.
+
+---
+
+### controllers/adminController.js — 6 Functions
+
+#### `getDashboard` — GET /api/admin/dashboard
+
+WHY: Admins need a quick overview without checking collections manually.
+HOW: Runs 6 MongoDB count queries in parallel using Promise.all().
+
+```
+Promise.all([
+  User.countDocuments({ role: 'user' }),
+  User.countDocuments({ role: 'agent' }),
+  Complaint.countDocuments(),
+  Complaint.countDocuments({ status: 'Open' }),
+  Complaint.countDocuments({ status: 'In Progress' }),
+  Complaint.countDocuments({ status: 'Resolved' }),
+])
+```
+
+WHY Promise.all()?
+  Running queries one-by-one means each waits for the previous to finish.
+  Promise.all() runs all 6 simultaneously — much faster.
+
+Example response:
+```json
+{
+  "success": true,
+  "dashboard": {
+    "totalUsers": 42,
+    "totalAgents": 5,
+    "totalComplaints": 130,
+    "complaintsByStatus": {
+      "open": 20,
+      "inProgress": 15,
+      "resolved": 95
+    }
+  }
+}
+```
+
+---
+
+#### `getAllUsers` — GET /api/admin/users
+
+WHY: Admins need to see all regular users to manage them.
+HOW: User.find({ role: 'user' }).sort({ createdAt: -1 })
+Returns only role === 'user', sorted newest first.
+
+---
+
+#### `getAllAgents` — GET /api/admin/agents
+
+WHY: When assigning a complaint, admin needs to know which agents exist.
+HOW: User.find({ role: 'agent' }).sort({ createdAt: -1 })
+Returns only role === 'agent', sorted newest first.
+
+---
+
+#### `updateUserRole` — PUT /api/admin/users/:id/role
+
+WHY: This is how RBAC is managed. An admin promotes a user → agent, or agent → admin.
+HOW:
+  1. Read :id from URL (target user)
+  2. Read new role from body: { "role": "agent" }
+  3. Validate role is one of: user, agent, admin
+  4. Block admin from changing their own role (safety)
+  5. Find user, update role, call .save() (runs enum validators)
+
+WHY .save() and not findByIdAndUpdate()?
+  .save() runs Mongoose schema validators — including the enum check.
+  findByIdAndUpdate() bypasses validators by default.
+  Since role has an enum constraint, .save() is safer.
+
+WHY block self-role-change?
+  If an admin demotes themselves to 'user', they lose all admin access
+  and cannot fix it. This safety check prevents that accident.
+
+---
+
+#### `assignComplaint` — PUT /api/admin/complaints/:id/assign
+
+WHY: When a complaint comes in, it starts Open and unassigned.
+     An admin reviews it and assigns it to the right agent.
+HOW:
+  1. Read complaint :id from URL
+  2. Read { agentId } from body
+  3. Confirm agent exists AND role === 'agent'
+  4. Find the complaint
+  5. Set complaint.assignedTo = agentId
+  6. Set complaint.status = 'In Progress' (auto-update — no manual step needed)
+  7. Save and populate the agent's name/email in the response
+
+WHY set status to 'In Progress' automatically?
+  Once assigned, the complaint is being worked on.
+  The admin shouldn't need two separate API calls.
+
+---
+
+#### `deleteUser` — DELETE /api/admin/users/:id
+
+WHY: Admins may need to remove inactive, duplicate, or policy-violating accounts.
+HOW:
+  1. Block admin from deleting themselves (safety)
+  2. Find the user by :id
+  3. Delete all their complaints: Complaint.deleteMany({ user: id })
+  4. Delete the user: user.deleteOne()
+
+WHY delete complaints first?
+  Without this step, orphaned complaints remain in the database.
+  Their `user` field points to a deleted user — a dangling reference.
+  The cleanup step keeps the database consistent and tidy.
+
+WHY Complaint.deleteMany() and not a loop?
+  deleteMany() is one MongoDB query that removes all matching documents.
+  Looping and deleting one-by-one would be N separate queries — far slower.
+
+---
+
+### routes/adminRoutes.js — Route Definitions
+
+```
+router.use(protect)              → all routes require JWT
+router.use(authorize('admin'))   → all routes require admin role
+
+GET    /api/admin/dashboard              → getDashboard
+GET    /api/admin/users                  → getAllUsers
+GET    /api/admin/agents                 → getAllAgents
+PUT    /api/admin/users/:id/role         → updateUserRole
+PUT    /api/admin/complaints/:id/assign  → assignComplaint
+DELETE /api/admin/users/:id              → deleteUser
+```
+
+WHY router.use() instead of repeating protect + authorize on each route?
+  router.use() applies the middleware once and it covers every route below.
+  Repeating it on each route is error-prone — easy to forget one.
+  With router.use(), any new route added below is automatically protected.
+
+---
+
+### app.js Changes (Phase 4)
+
+```js
+// 1 line added — import the admin router
+const adminRoutes = require('./routes/adminRoutes');
+
+// 3 lines added — mount at /api/admin
+app.use('/api/admin', adminRoutes);
+```
+
+---
+
+### Admin Flow Diagram
+
+```
+CLIENT (Postman)
+  │  Authorization: Bearer <admin-token>
+  │  GET /api/admin/dashboard
+  ▼
+app.js → express.json() → adminRoutes
+  │
+  ├─ router.use(protect)
+  │     1. Read Authorization header
+  │     2. jwt.verify() → decoded.id
+  │     3. User.findById(decoded.id) → req.user
+  │     4. If no token / invalid / user not found → 401
+  │
+  ├─ router.use(authorize('admin'))
+  │     5. Check req.user.role === 'admin'
+  │     6. If not admin → 403 Forbidden
+  │
+  └─ getDashboard controller
+        7. Promise.all([6 count queries])
+        8. Return dashboard JSON
+```
+
+---
+
+### Phase 4 API Endpoints
+
+| Method | Endpoint                          | Auth  | Description                    |
+|--------|-----------------------------------|-------|--------------------------------|
+| GET    | /api/admin/dashboard              | admin | System stats overview          |
+| GET    | /api/admin/users                  | admin | List all regular users         |
+| GET    | /api/admin/agents                 | admin | List all agents                |
+| PUT    | /api/admin/users/:id/role         | admin | Change a user's role           |
+| PUT    | /api/admin/complaints/:id/assign  | admin | Assign complaint to agent      |
+| DELETE | /api/admin/users/:id              | admin | Delete user + their complaints |
+
+---
+
+### SUMMARY OF CHANGES (Phase 4 — 2026-06-24)
+
+✅ CREATED: controllers/adminController.js — 6 admin functions with full comments
+✅ CREATED: routes/adminRoutes.js — all routes protected by protect + authorize('admin')
+✅ MODIFIED: app.js — adminRoutes imported and mounted at /api/admin
+
+================================================================================
+========================== PHASE 4: ADMIN PANEL COMPLETE =======================
+================================================================================

@@ -1,0 +1,348 @@
+# Project Flow - SCRS Backend (2026-06-29)
+
+## Status
+- [x] Phase 1: Startup & App Structure - Completed
+- [x] Phase 2: Authentication - Completed
+- [x] Phase 3: Complaint CRUD - Completed
+- [x] Phase 4: Admin Management - Completed
+- [x] Phase 5: Security Hardening - Completed
+
+---
+
+## Recent Update
+- Added request throttling for authentication routes in app.js.
+- Login and registration endpoints now use a rate limiter to reduce abuse and repeated brute-force attempts.
+- Backend documentation files were updated to reflect this change.
+
+---
+
+## Core Backend Flow
+1. The client sends a request to the backend.
+2. server.js loads environment variables, connects to MongoDB, and starts the app.
+3. app.js configures middleware, CORS, static uploads, and route mounting.
+4. Routes dispatch requests to controllers.
+5. Controllers interact with Mongoose models.
+6. Responses are returned as JSON, and errors pass through the global handler.
+
+---
+
+## Phase 1: Startup & App Structure
+1. package.json
+   - Contains scripts for starting the server.
+   - Includes Express, Mongoose, dotenv, CORS, JWT, bcryptjs, and multer.
+
+2. server.js
+   - Loads environment variables.
+   - Connects to MongoDB through config/db.js.
+   - Starts the app on the configured port.
+
+3. config/db.js
+   - Opens a MongoDB connection using MONGO_URI.
+   - Logs success or exits on failure.
+
+4. app.js
+   - Adds JSON body parsing and CORS.
+   - Serves uploaded files from /uploads.
+   - Mounts /api/auth, /api/complaints, and /api/admin.
+   - Adds root health-check and 404/error middleware.
+   - Applies auth rate limiting.
+
+---
+
+## Phase 2: Authentication
+1. models/User.js
+   - Defines the schema for users.
+   - Stores name, email, password, role, agentSecurityCode, createdAt.
+   - Hashes passwords only when changed.
+   - Supports comparePassword() and generateSecurityCode().
+
+2. routes/authRoutes.js
+   - POST /api/auth/register
+   - POST /api/auth/login
+   - GET /api/auth/me
+
+3. controllers/authController.js
+   - register creates a user and returns a JWT.
+   - login validates credentials and returns a JWT.
+   - getMe returns the currently authenticated user.
+
+4. middleware/authMiddleware.js
+   - protect verifies the JWT from the Authorization header.
+   - authorize checks the authenticated role.
+
+---
+
+## Phase 3: Complaint CRUD
+1. models/Complaint.js
+   - Stores complaint details and lifecycle information.
+   - Supports user, category, status, priority, assignment, notes, attachments, and history.
+
+2. routes/complaintRoutes.js
+   - Requires authentication for all complaint routes.
+   - GET /api/complaints/stats is for admin and agent roles only.
+   - CRUD routes handle complaint creation, reading, editing, and deletion.
+
+3. controllers/complaintController.js
+   - createComplaint allows regular users to submit complaints.
+   - getAllComplaints returns complaints based on the user's role.
+   - getComplaintById enforces ownership for users.
+   - updateComplaint allows role-defined field changes.
+   - deleteComplaint enforces proper deletion rules.
+   - getComplaintStats returns aggregate counts.
+
+---
+
+## Phase 4: Admin Management
+1. routes/adminRoutes.js
+   - Protects all admin endpoints.
+   - Supports dashboard, user, agent, and assignment management routes.
+
+2. controllers/adminController.js
+   - getDashboard returns system summary data.
+   - getAllUsers lists regular users with complaint counts.
+   - getAllAgents lists agents with assignment counts.
+   - updateUserRole changes roles.
+   - assignComplaint assigns a complaint to an agent.
+   - generateAgentSecurityCode creates an agent login code.
+   - deleteUser removes a user and related complaints.
+
+---
+
+## Security Notes
+- JWT secrets must be configured in .env.
+- Passwords are never stored as plain text.
+- Authentication endpoints are rate limited.
+- Role-based access is enforced across protected routes.
+
+---
+
+## How to Run
+1. Set up the environment and dependencies.
+2. Create a .env file with MongoDB and JWT settings.
+3. Start the backend service.
+4. Test the API using Postman or the frontend.
+View by ID            | ✅ Own only   | ✅ All   | ✅ All
+Edit title/desc       | ✅ Own+Open   | ❌       | ✅
+Update status/prio    | ❌            | ✅       | ✅
+Assign to agent       | ❌            | ❌       | ✅
+Delete                | ✅ Own+Open   | ❌       | ✅ All
+View stats            | ❌            | ✅       | ✅
+
+PHASE 3 API ENDPOINTS
+
+Method  | Endpoint                   | Auth            | Description
+────────────────────────────────────────────────────────────────────────
+POST    | /api/complaints            | any logged in   | create complaint
+GET     | /api/complaints            | any logged in   | get all (role filtered)
+GET     | /api/complaints/stats      | admin / agent   | stats by status
+GET     | /api/complaints/:id        | any logged in   | get single
+PUT     | /api/complaints/:id        | any logged in   | update (role restricted)
+DELETE  | /api/complaints/:id        | user/admin      | delete
+
+PHASE 3 CHECKPOINT
+- [x] Complaint.js schema with user ref, status/priority/category enums, timestamps
+- [x] complaintController.js — 6 functions: create, getAll, getById, update, delete, stats
+- [x] complaintRoutes.js — router.use(protect) + /stats before /:id
+- [x] app.js — 2 lines: import + mount at /api/complaints
+- [x] models/User.js — 'agent' added to role enum
+- [x] Role-based access enforced at controller level
+- [x] .populate() used for user and assignedTo references
+- [x] MongoDB Aggregation Pipeline used in getComplaintStats
+
+LATEST CHANGES SUMMARY (2026-06-23 — Phase 3)
+- models/Complaint.js:         created — full complaint schema
+- controllers/complaintController.js: created — 6 CRUD+stats functions
+- routes/complaintRoutes.js:   created — protect + route order guard
+- app.js:                      mounted /api/complaints
+- models/User.js:              added 'agent' to role enum
+- info.txt / project_flow.txt: updated with full Phase 3 documentation
+
+================================================================================
+========================== PHASE 3: COMPLAINT CRUD COMPLETE ====================
+================================================================================
+
+================================================================================
+========================== PHASE 4: ADMIN PANEL ================================
+================================================================================
+
+PHASE 4: ADMIN PANEL
+
+STATUS: [x] Phase 4: Admin Panel - COMPLETED
+
+Files Added:
+  controllers/adminController.js  <- 6 admin-only business logic functions
+  routes/adminRoutes.js           <- URL definitions, all protected by admin RBAC
+
+Files Modified:
+  app.js  <- adminRoutes imported + mounted at /api/admin
+
+---
+
+WHAT IS RBAC?
+
+RBAC = Role-Based Access Control.
+Each user has a role: 'user', 'agent', or 'admin'.
+The role determines what routes they are allowed to call.
+
+Role table:
+  user  -> can file and manage their own complaints
+  agent -> can view all complaints, update status and resolution notes
+  admin -> can manage users, assign complaints, view the dashboard
+
+HOW RBAC IS ENFORCED IN PHASE 4:
+
+  Two middleware layers sit in front of EVERY admin route:
+
+    router.use(protect)
+      -> Checks that a valid JWT token is in the Authorization header.
+      -> Decodes the token and loads the user from the database.
+      -> Sets req.user so controllers know who is calling.
+      -> If token is missing or invalid -> 401 Unauthorized.
+
+    router.use(authorize('admin'))
+      -> Reads req.user.role.
+      -> If role is not 'admin' -> 403 Forbidden.
+      -> If role is 'admin' -> continues.
+
+  Both are applied once at the TOP of adminRoutes.js using router.use().
+  Every route below is automatically covered.
+
+---
+
+1. controllers/adminController.js
+   - Exports 6 functions
+
+   getDashboard (GET /api/admin/dashboard)
+     - Runs 6 MongoDB countDocuments() queries simultaneously with Promise.all()
+     - WHY Promise.all()? Running queries one-by-one is slower.
+       Promise.all() starts all 6 at the same time and waits for all results.
+     - Counts: totalUsers, totalAgents, totalComplaints, open, inProgress, resolved
+
+   getAllUsers (GET /api/admin/users)
+     - User.find({ role: 'user' }).sort({ createdAt: -1 })
+     - Returns only regular users, sorted newest first
+
+   getAllAgents (GET /api/admin/agents)
+     - User.find({ role: 'agent' }).sort({ createdAt: -1 })
+     - Returns only agents — useful when the admin needs to pick one to assign a complaint to
+
+   updateUserRole (PUT /api/admin/users/:id/role)
+     - Validates role is one of: user, agent, admin
+     - Blocks admin from changing their own role (safety guard)
+     - Finds user, sets user.role, calls user.save()
+     - WHY .save()? Runs Mongoose enum validators.
+       findByIdAndUpdate() skips validators — risky for enum fields.
+
+   assignComplaint (PUT /api/admin/complaints/:id/assign)
+     - Body: { "agentId": "..." }
+     - Validates agentId is provided
+     - Confirms the agentId belongs to a real user with role === 'agent'
+     - Sets complaint.assignedTo = agentId
+     - Auto-sets complaint.status = 'In Progress'
+     - WHY auto-set status? Once assigned, the complaint is actively being handled.
+       The admin should not need a second API call just to update the status.
+     - Populates assignedTo after save so response shows name + email
+
+   deleteUser (DELETE /api/admin/users/:id)
+     - Blocks admin from deleting themselves (safety guard)
+     - Finds the user by ID
+     - Deletes all their complaints first: Complaint.deleteMany({ user: id })
+     - WHY delete complaints first? Without this, complaints remain in the DB
+       with a user field pointing to a deleted user — a dangling reference.
+     - Deletes the user: user.deleteOne()
+     - WHY deleteMany() and not a loop? One query is faster than N queries.
+
+2. routes/adminRoutes.js
+   - router.use(protect)             -> covers all routes below
+   - router.use(authorize('admin'))  -> covers all routes below
+
+   GET    /api/admin/dashboard              -> getDashboard
+   GET    /api/admin/users                  -> getAllUsers
+   GET    /api/admin/agents                 -> getAllAgents
+   PUT    /api/admin/users/:id/role         -> updateUserRole
+   PUT    /api/admin/complaints/:id/assign  -> assignComplaint
+   DELETE /api/admin/users/:id              -> deleteUser
+
+3. app.js (2 changes)
+   const adminRoutes = require('./routes/adminRoutes');
+   app.use('/api/admin', adminRoutes);
+
+---
+
+ADMIN FLOW DIAGRAM
+
+  CLIENT (Postman / React)
+    |  Authorization: Bearer <admin-token>
+    |  e.g. GET /api/admin/dashboard
+    v
+  app.js -> express.json() -> app.use('/api/admin', adminRoutes)
+    |
+    +- router.use(protect)
+    |     1. Extract token from Authorization header
+    |     2. jwt.verify(token, JWT_SECRET) -> decoded = { id: ... }
+    |     3. User.findById(decoded.id) -> req.user
+    |     4. If any step fails -> 401 Unauthorized (stopped here)
+    |
+    +- router.use(authorize('admin'))
+    |     5. Check req.user.role === 'admin'
+    |     6. If role !== 'admin' -> 403 Forbidden (stopped here)
+    |
+    +- Controller function runs
+          7. Executes the admin logic (dashboard, assign, delete, etc.)
+          8. Returns JSON response
+
+---
+
+ADMIN FLOW: Promote User to Agent
+
+  1. Admin logs in -> POST /api/auth/login -> receives token
+  2. Admin calls GET /api/admin/users -> sees list of users with their IDs
+  3. Admin calls PUT /api/admin/users/<userId>/role
+     Body: { "role": "agent" }
+  4. updateUserRole validates -> updates -> saves -> returns updated user
+
+ADMIN FLOW: Assign Complaint to Agent
+
+  1. Admin calls GET /api/admin/agents -> sees list of agents with their IDs
+  2. Admin finds an open complaint (via GET /api/complaints or dashboard)
+  3. Admin calls PUT /api/admin/complaints/<complaintId>/assign
+     Body: { "agentId": "<agentId>" }
+  4. assignComplaint confirms agent, updates complaint, auto-sets 'In Progress'
+
+ADMIN FLOW: Delete User
+
+  1. Admin calls GET /api/admin/users -> gets list with IDs
+  2. Admin calls DELETE /api/admin/users/<userId>
+  3. deleteUser removes their complaints first, then removes the user
+
+---
+
+PHASE 4 API ENDPOINTS
+
+Method  | Endpoint                          | Auth  | Description
+------------------------------------------------------------------------------------
+GET     | /api/admin/dashboard              | admin | System stats overview
+GET     | /api/admin/users                  | admin | List all regular users
+GET     | /api/admin/agents                 | admin | List all agents
+PUT     | /api/admin/users/:id/role         | admin | Change a user's role
+PUT     | /api/admin/complaints/:id/assign  | admin | Assign complaint to agent
+DELETE  | /api/admin/users/:id              | admin | Delete user + their complaints
+
+PHASE 4 CHECKPOINT
+- [x] controllers/adminController.js: 6 functions with full beginner comments
+- [x] routes/adminRoutes.js: router.use(protect) + router.use(authorize('admin'))
+- [x] app.js: import + mount adminRoutes at /api/admin
+- [x] Promise.all() used for parallel DB queries in getDashboard
+- [x] Safety guards: admin cannot change own role or delete own account
+- [x] Complaint.deleteMany() used for bulk cleanup on user deletion
+- [x] Complaint status auto-set to 'In Progress' when assigned
+
+LATEST CHANGES SUMMARY (2026-06-24 - Phase 4)
+- controllers/adminController.js:  created - 6 admin functions with full beginner comments
+- routes/adminRoutes.js:           created - protect + authorize('admin') on all routes
+- app.js:                          mounted /api/admin
+- info.txt / project_flow.txt:     updated with full Phase 4 documentation
+
+================================================================================
+========================== PHASE 4: ADMIN PANEL COMPLETE =======================
+================================================================================
