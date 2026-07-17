@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
@@ -5,6 +6,7 @@ import useAuth from "../../hooks/useAuth";
 
 const MainLayout = () => {
   const { user } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   if (!user) return <Outlet />;
 
@@ -12,10 +14,19 @@ const MainLayout = () => {
     <div style={styles.layout}>
       <Navbar />
       <div style={styles.container}>
-        <Sidebar />
-        <main style={styles.mainContent}>
+        <Sidebar isOpen={isSidebarOpen} />
+        
+        {isSidebarOpen && (
+          <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />
+        )}
+        
+        <main className="main-content-layout" style={styles.mainContent}>
           <Outlet />
         </main>
+        
+        <button className="sidebar-toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+          {isSidebarOpen ? "✕" : "☰"}
+        </button>
       </div>
     </div>
   );

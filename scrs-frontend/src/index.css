@@ -331,3 +331,80 @@ a {
   transform: translateX(2px);
 }
 
+/* ─── Mobile Responsiveness Overage ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Collapse sidebar off-screen by default on mobile */
+  .sidebar-container {
+    position: fixed !important;
+    top: var(--height-navbar) !important;
+    left: 0 !important;
+    width: var(--width-sidebar) !important;
+    height: calc(100vh - var(--height-navbar)) !important;
+    z-index: 999 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: none !important;
+  }
+
+  /* Slide in sidebar when open */
+  .sidebar-container.open {
+    transform: translateX(0) !important;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  /* Make main content occupy 100% space and remove default spacing */
+  .main-content-layout {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 1.25rem !important;
+  }
+
+  /* Floating drawer button for mobile views */
+  .sidebar-toggle-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--grad-primary);
+    color: #ffffff;
+    border: none;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+    z-index: 1000;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .sidebar-toggle-btn:active {
+    transform: scale(0.9);
+  }
+
+  /* Blurred overlay under active sidebar */
+  .sidebar-overlay {
+    position: fixed;
+    top: var(--height-navbar);
+    left: 0;
+    width: 100vw;
+    height: calc(100vh - var(--height-navbar));
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 998;
+  }
+
+  /* Adjust grid columns to 1 column on mobile dashboards */
+  .dashboard-grid, .stats-row, .cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Hide toggle button on desktop views */
+.sidebar-toggle-btn {
+  display: none;
+}
+

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -13,7 +13,7 @@ const Sidebar = () => {
   if (!user) return null;
 
   return (
-    <aside className="sidebar-container">
+    <aside className={`sidebar-container ${isOpen ? "open" : ""}`}>
       <div className="sidebar-group">
         <div className="sidebar-label">MENU</div>
         
