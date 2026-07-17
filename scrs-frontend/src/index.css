@@ -397,9 +397,19 @@ a {
     z-index: 998;
   }
 
-  /* Adjust grid columns to 1 column on mobile dashboards */
-  .dashboard-grid, .stats-row, .cards-grid {
+  /* Adjust layout grids to single column on mobile */
+  .stat-strip-layout, .columns-layout, .profile-info-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  /* Hide extra text and buttons in top navbar to prevent overflow */
+  .nav-user-text, .nav-logout-btn {
+    display: none !important;
+  }
+
+  /* Optimize padding for layout pages on mobile */
+  .main-content-layout {
+    padding: 1.25rem 1rem !important;
   }
 }
 

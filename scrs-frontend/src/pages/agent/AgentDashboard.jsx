@@ -83,7 +83,7 @@ const AgentDashboard = () => {
       {error && <div style={s.error}>{error}</div>}
 
       {/* ── STAT STRIP ─────────────────────────────────────────────────────── */}
-      <div style={s.statStrip}>
+      <div style={s.statStrip} className="stat-strip-layout">
         {[
           { label: "Total Assigned", value: total,             accent: "var(--accent-blue)" },
           { label: "Active",         value: active,            accent: "#fbbf24" },
@@ -105,7 +105,7 @@ const AgentDashboard = () => {
       </div>
 
       {/* ── MAIN CONTENT: two-column layout ────────────────────────────────── */}
-      <div style={s.columns}>
+      <div style={s.columns} className="columns-layout">
 
         {/* LEFT — recent assignments */}
         <div style={s.mainPanel} className="glass-panel">

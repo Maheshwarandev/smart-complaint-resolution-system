@@ -14,6 +14,7 @@ import Register from "./pages/auth/Register";
 import Dashboard       from "./pages/user/Dashboard";
 import MyComplaints    from "./pages/user/MyComplaints";
 import SubmitComplaint from "./pages/user/SubmitComplaint";
+import Profile         from "./pages/Profile";
 
 // Agent Pages
 import AgentDashboard   from "./pages/agent/AgentDashboard";
@@ -48,6 +49,11 @@ const App = () => {
 
           {/* ── Authenticated Routes with MainLayout ──────────────────────── */}
           <Route element={<MainLayout />}>
+            {/* ── Common Profile Route ───────────────────────────────────── */}
+            <Route path="/profile" element={
+              <ProtectedRoute allowedRoles={[ROLES.USER, ROLES.AGENT, ROLES.ADMIN]}><Profile /></ProtectedRoute>
+            } />
+
             {/* ── User Routes (role='user' only) ─────────────────────────── */}
             <Route path="/dashboard" element={
               <ProtectedRoute allowedRoles={[ROLES.USER]}><Dashboard /></ProtectedRoute>

@@ -70,7 +70,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* ── STAT STRIP — 4 system-wide stats ───────────────────────────────── */}
-      <div style={s.statStrip}>
+      <div style={s.statStrip} className="stat-strip-layout">
         {[
           { label: "Total Users",      value: summary.totalUsers      || 0, accent: "#f43f5e" },
           { label: "Total Agents",     value: summary.totalAgents     || 0, accent: "#fbbf24" },
@@ -98,7 +98,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* ── MAIN TWO-COLUMN LAYOUT ─────────────────────────────────────────── */}
-      <div style={s.columns}>
+      <div style={s.columns} className="columns-layout">
 
         {/* LEFT — recent complaints table */}
         <div style={s.mainPanel} className="glass-panel">

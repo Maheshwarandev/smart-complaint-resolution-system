@@ -71,7 +71,7 @@ const Dashboard = () => {
       {error && <div style={s.error}>{error}</div>}
 
       {/* ── STAT STRIP ─────────────────────────────────────────────────────── */}
-      <div style={s.statStrip}>
+      <div style={s.statStrip} className="stat-strip-layout">
         {[
           { label: "Total",       value: total,                 accent: "var(--accent-blue)" },
           { label: "Open",        value: counts["Open"],        accent: "#60a5fa" },
@@ -93,7 +93,7 @@ const Dashboard = () => {
       </div>
 
       {/* ── TWO-COLUMN LAYOUT ──────────────────────────────────────────────── */}
-      <div style={s.columns}>
+      <div style={s.columns} className="columns-layout">
 
         {/* LEFT — recent complaints */}
         <div style={s.mainPanel} className="glass-panel">

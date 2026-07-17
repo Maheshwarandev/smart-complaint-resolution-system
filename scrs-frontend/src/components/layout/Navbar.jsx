@@ -127,8 +127,8 @@ const Navbar = () => {
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
           
-          <div style={styles.userInfo}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <div style={styles.userInfo} className="nav-user-info">
+            <div className="nav-user-text" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
               <span style={styles.name}>{user.name}</span>
               <span style={styles.role}>{user.role}</span>
             </div>
@@ -145,6 +145,7 @@ const Navbar = () => {
               onClick={handleLogout} 
               onMouseEnter={() => setHoverLogout(true)}
               onMouseLeave={() => setHoverLogout(false)}
+              className="nav-logout-btn"
               style={{
                 ...styles.btn,
                 ...(hoverLogout ? styles.btnHover : {})
