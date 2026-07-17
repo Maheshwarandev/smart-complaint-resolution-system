@@ -20,9 +20,21 @@ const connectDB = async () => {
     const conn = await mongoose.connect(process.env.MONGO_URI);
 
     // If connection succeeded, log the host name to the terminal.
-    // conn.connection.host tells us which server MongoDB is running on.
-    // For local development this will show: 127.0.0.1
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+
+    // Auto-seed a default administrator if none exists
+    const User = require('../models/User');
+    const adminExists = await User.findOne({ role: 'admin' });
+    if (!adminExists) {
+      console.log('No admin user found. Auto-seeding default system administrator...');
+      await User.create({
+        name: 'System Administrator',
+        email: 'admin@scrs.com',
+        password: 'adminpassword123',
+        role: 'admin'
+      });
+      console.log('Default administrator account (admin@scrs.com) created!');
+    }
 
   } catch (error) {
     // If something goes wrong (wrong URI, MongoDB not running, etc.),
