@@ -6,6 +6,7 @@
 - [x] Phase 3: Complaint CRUD - Completed
 - [x] Phase 4: Admin Management - Completed
 - [x] Phase 5: Security Hardening - Completed
+- [x] Phase 6: Cloud Deployment & Modernization - Completed
 
 ---
 
@@ -345,4 +346,56 @@ LATEST CHANGES SUMMARY (2026-06-24 - Phase 4)
 
 ================================================================================
 ========================== PHASE 4: ADMIN PANEL COMPLETE =======================
+================================================================================
+
+================================================================================
+================== PHASE 6: CLOUD DEPLOYMENT & MODERNIZATION ==================
+================================================================================
+
+PHASE 6: CLOUD DEPLOYMENT & MODERNIZATION
+
+STATUS: [x] Phase 6: Cloud Deployment & Modernization - COMPLETED (2026-07-17)
+
+Files Added:
+  scrs-backend/config/cloudinary.js       <- Cloudinary connection config
+  scrs-frontend/src/pages/Profile.jsx     <- View personal account settings
+
+Files Modified:
+  scrs-backend/config/db.js               <- Added automatic admin seeding on connection
+  scrs-backend/middleware/uploadMiddleware.js <- Switched from local DiskStorage to MemoryStorage
+  scrs-backend/controllers/complaintController.js <- Updated file upload streaming to Cloudinary API
+  scrs-frontend/src/App.jsx               <- Registered Profile page routing and useTheme wrapper
+  scrs-frontend/src/index.css             <- Premium Obsidian UI & responsive mobile grid styles
+  scrs-frontend/src/components/layout/MainLayout.jsx <- Handled mobile sidebar toggle drawer states
+  scrs-frontend/src/components/layout/Sidebar.jsx  <- Received drawer state; linked /profile NavLink
+  scrs-frontend/src/components/layout/Navbar.jsx   <- Scaled navbar info blocks to fit mobile screens
+
+---
+
+### 1. Cloud Database (MongoDB Atlas)
+* Replaced local MongoDB configuration with a live, clustered cloud database on MongoDB Atlas.
+* Configured whitelists (`0.0.0.0/0`) under Network Access to allow secure access from anywhere (local & Render).
+
+### 2. Persistent Storage (Cloudinary)
+* Removed local file storage (`/uploads/` folder) to prevent uploaded files from getting wiped during Render instance restarts.
+* Refactored Multer to use `memoryStorage()` to hold the file buffer in memory temporary.
+* Implemented Cloudinary SDK connection to stream file buffers straight to Cloudinary servers.
+* Backend now saves full secure URL strings returned from Cloudinary's CDN.
+
+### 3. Automated Seeding
+* Seeding logic is integrated inside Mongoose's connection callback (`config/db.js`). 
+* Checks if `role: "admin"` user exists on boot. If none, automatically creates `admin@scrs.com` (password: `adminpassword123`).
+
+### 4. Obsidian Glassmorphic UI & Responsiveness
+* Custom vector shield logo favicon and shortened browser title (`SCRS`).
+* Multi-column stats and dashboards now dynamically collapse to a single vertical column on mobile screens (`max-width: 768px`) using CSS media queries.
+* Added a floating menu button drawer toggle to slide the navigation panel in/out cleanly on mobile viewports.
+
+### 5. Render Deployment Setup
+* **Backend Web Service**: Root `scrs-backend`, `npm install` build, `npm start` start, connected to MongoDB Atlas & Cloudinary.
+* **Frontend Static Site**: Root `scrs-frontend`, `npm run build` build, `dist` publish, added `VITE_API_URL` environment variables pointing to the live backend.
+* **CORS Settings**: Whitelisted `FRONTEND_URL` in backend env configurations.
+
+================================================================================
+============== PHASE 6: CLOUD DEPLOYMENT & MODERNIZATION COMPLETE ==============
 ================================================================================
