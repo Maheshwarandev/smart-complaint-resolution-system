@@ -56,7 +56,11 @@ const Login = () => {
         navigate("/dashboard");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed. Try again.");
+      if (!err.response) {
+        setError("Cannot connect to backend server. Please make sure backend is running on port 5000.");
+      } else {
+        setError(err.response?.data?.message || "Login failed. Try again.");
+      }
     } finally {
       setLoading(false);
     }

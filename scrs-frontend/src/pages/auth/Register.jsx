@@ -31,7 +31,11 @@ const Register = () => {
       // User must log in with their credentials
       navigate("/login", { state: { message: "Registration successful! Please log in." } });
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed.");
+      if (!err.response) {
+        setError("Cannot connect to backend server. Please make sure backend is running on port 5000.");
+      } else {
+        setError(err.response?.data?.message || "Registration failed.");
+      }
     } finally {
       setLoading(false);
     }
