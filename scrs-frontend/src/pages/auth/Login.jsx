@@ -23,11 +23,6 @@ const Login = () => {
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
-  const fillDemo = (email, password, isAgent = false) => {
-    setShowAgentCode(isAgent);
-    setForm({ email, password, agentSecurityCode: isAgent ? "AGENTCODE" : "" });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -79,23 +74,7 @@ const Login = () => {
         {error && <div style={s.error}>{error}</div>}
         {success && <div style={s.success}>{success}</div>}
 
-        {/* Demo Preset Credentials Row */}
-        <div style={s.demoSection}>
-          <span style={s.demoLabel}>⚡ Quick Demo Sign-in:</span>
-          <div style={s.demoBtnsRow}>
-            <button type="button" onClick={() => fillDemo("admin@scrs.com", "adminpassword123")} style={s.demoChip}>
-              👑 Admin
-            </button>
-            <button type="button" onClick={() => fillDemo("john@example.com", "userpassword123")} style={s.demoChip}>
-              👤 User
-            </button>
-            <button type="button" onClick={() => fillDemo("alex@example.com", "agentpassword123", true)} style={s.demoChip}>
-              🛠️ Agent
-            </button>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} style={s.form}>
+        <form onSubmit={handleSubmit} style={s.form} autoComplete="off">
           <div style={s.field}>
             <label style={s.label}>Work Email Address</label>
             <input
@@ -104,6 +83,7 @@ const Login = () => {
               value={form.email}
               onChange={handleChange}
               placeholder="name@organization.com"
+              autoComplete="off"
               required
               style={s.input}
             />
@@ -117,6 +97,7 @@ const Login = () => {
               value={form.password}
               onChange={handleChange}
               placeholder="••••••••"
+              autoComplete="new-password"
               required
               style={s.input}
             />
@@ -145,6 +126,7 @@ const Login = () => {
                 value={form.agentSecurityCode}
                 onChange={handleChange}
                 placeholder="e.g., AGENTCODE"
+                autoComplete="off"
                 required
                 style={s.input}
               />
@@ -187,7 +169,7 @@ const styles = {
   },
   brandHeader: {
     textAlign: "center",
-    marginBottom: "1.5rem"
+    marginBottom: "1.75rem"
   },
   logoIcon: {
     width: "56px",
@@ -213,38 +195,6 @@ const styles = {
     margin: 0,
     color: "var(--text-secondary)",
     fontSize: "0.88rem",
-  },
-  demoSection: {
-    background: "rgba(255, 255, 255, 0.025)",
-    border: "1px solid var(--border-subtle)",
-    borderRadius: "12px",
-    padding: "0.75rem 0.9rem",
-    marginBottom: "1.5rem"
-  },
-  demoLabel: {
-    color: "var(--text-muted)",
-    fontSize: "0.75rem",
-    fontWeight: "700",
-    display: "block",
-    marginBottom: "0.5rem",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em"
-  },
-  demoBtnsRow: {
-    display: "flex",
-    gap: "0.5rem"
-  },
-  demoChip: {
-    flex: 1,
-    background: "rgba(56, 189, 248, 0.08)",
-    border: "1px solid rgba(56, 189, 248, 0.18)",
-    color: "var(--text-primary)",
-    borderRadius: "8px",
-    padding: "0.35rem 0.5rem",
-    fontSize: "0.78rem",
-    fontWeight: "600",
-    cursor: "pointer",
-    transition: "all 0.2s"
   },
   form: {
     display: "flex",
