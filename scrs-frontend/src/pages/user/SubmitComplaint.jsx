@@ -5,9 +5,9 @@ import { COMPLAINT_CATEGORY, COMPLAINT_PRIORITY } from "../../constants";
 
 const SubmitComplaint = () => {
   const navigate = useNavigate();
-  const [form,    setForm]    = useState({ title: "", description: "", category: "", priority: COMPLAINT_PRIORITY.MEDIUM });
-  const [files,   setFiles]   = useState([]);
-  const [error,   setError]   = useState("");
+  const [form, setForm] = useState({ title: "", description: "", category: "", priority: COMPLAINT_PRIORITY.MEDIUM });
+  const [files, setFiles] = useState([]);
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +35,7 @@ const SubmitComplaint = () => {
 
     try {
       await createComplaintAPI(formData);
-      setSuccess("Complaint submitted successfully! Redirecting...");
+      setSuccess("Complaint ticket created successfully! Redirecting...");
       setTimeout(() => navigate("/complaints"), 1500);
     } catch (err) {
       setError(err.response?.data?.message || "Submission failed.");
@@ -44,66 +44,88 @@ const SubmitComplaint = () => {
     }
   };
 
-  const s = styles;
   return (
     <div style={s.page} className="animate-fade-in">
-      <div className="glass-panel" style={s.card}>
-        <h2 style={s.title}>Submit a Complaint</h2>
-        <p style={s.sub}>Fill in the details below and we'll get back to you</p>
+      <div style={s.header}>
+        <h1 style={s.headerTitle}>⚡ Submit Service Ticket</h1>
+        <p style={s.headerSub}>File a formal complaint or technical request with our support team</p>
+      </div>
 
+      <div className="glass-panel" style={s.card}>
         {error   && <div style={s.error}>{error}</div>}
         {success && <div style={s.success}>{success}</div>}
 
-        <form onSubmit={handleSubmit} encType="multipart/form-data">
+        <form onSubmit={handleSubmit} encType="multipart/form-data" style={s.form}>
           <div style={s.field}>
-            <label style={s.label}>Title</label>
-            <input className="input-field" name="title" value={form.title}
-              onChange={handleChange} placeholder="Brief summary of the issue"
-              minLength={5} required />
-          </div>
-
-          <div style={s.field}>
-            <label style={s.label}>Category</label>
-            <select className="input-field" name="category" value={form.category} onChange={handleChange} required>
-              <option value="" style={s.option}>Select a category</option>
-              {Object.values(COMPLAINT_CATEGORY).map(c => {
-                const label = c === 'hr' ? 'HR' : c.charAt(0).toUpperCase() + c.slice(1);
-                return <option key={c} value={c} style={s.option}>{label}</option>;
-              })}
-            </select>
-          </div>
-
-          <div style={s.field}>
-            <label style={s.label}>Priority</label>
-            <select className="input-field" name="priority" value={form.priority} onChange={handleChange}>
-              {Object.values(COMPLAINT_PRIORITY).map(p => {
-                const label = p.charAt(0).toUpperCase() + p.slice(1);
-                return <option key={p} value={p} style={s.option}>{label}</option>;
-              })}
-            </select>
-          </div>
-
-          <div style={s.field}>
-            <label style={s.label}>Description</label>
-            <textarea className="input-field" style={{ height: "130px", resize: "vertical" }}
-              name="description" value={form.description}
+            <label style={s.label}>Ticket Title</label>
+            <input
+              type="text"
+              name="title"
+              value={form.title}
               onChange={handleChange}
-              placeholder="Describe the issue in detail (min 10 characters)"
-              minLength={10} required />
+              placeholder="e.g. Server connectivity timeout in lab 3"
+              minLength={5}
+              required
+              style={s.input}
+            />
+          </div>
+
+          <div style={s.rowTwo}>
+            <div style={s.field}>
+              <label style={s.label}>Category</label>
+              <select name="category" value={form.category} onChange={handleChange} required style={s.select}>
+                <option value="" style={s.option}>Select category...</option>
+                {Object.values(COMPLAINT_CATEGORY).map(c => {
+                  const label = c === 'hr' ? 'HR' : c.charAt(0).toUpperCase() + c.slice(1);
+                  return <option key={c} value={c} style={s.option}>{label}</option>;
+                })}
+              </select>
+            </div>
+
+            <div style={s.field}>
+              <label style={s.label}>Priority Level</label>
+              <select name="priority" value={form.priority} onChange={handleChange} style={s.select}>
+                {Object.values(COMPLAINT_PRIORITY).map(p => {
+                  const label = p.charAt(0).toUpperCase() + p.slice(1);
+                  return <option key={p} value={p} style={s.option}>{label}</option>;
+                })}
+              </select>
+            </div>
+          </div>
+
+          <div style={s.field}>
+            <label style={s.label}>Detailed Description</label>
+            <textarea
+              name="description"
+              value={form.description}
+              onChange={handleChange}
+              placeholder="Provide complete details about the problem (min 10 characters)..."
+              minLength={10}
+              required
+              style={s.textarea}
+            />
           </div>
 
           <div style={s.field}>
             <label style={s.label}>Attachments (Optional, max 5MB total)</label>
-            <input type="file" style={s.fileInput} name="attachments" multiple accept=".jpg,.jpeg,.png,.pdf" onChange={handleFileChange} />
-            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>Supported formats: JPG, PNG, PDF</p>
+            <input
+              type="file"
+              name="attachments"
+              multiple
+              accept=".jpg,.jpeg,.png,.pdf"
+              onChange={handleFileChange}
+              style={s.fileInput}
+            />
+            {files.length > 0 && (
+              <div style={s.filesBadge}>
+                📎 {files.length} file(s) attached ({files.map(f => f.name).join(", ")})
+              </div>
+            )}
           </div>
 
-          <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
-            <button type="submit" className="btn-primary" style={s.btn} disabled={loading}>
-              {loading ? "Submitting..." : "Submit Complaint"}
-            </button>
-            <button type="button" style={s.cancelBtn} onClick={() => navigate("/complaints")}>
-              Cancel
+          <div style={s.btnRow}>
+            <button type="submit" disabled={loading} style={s.submitBtn}>
+              {loading ? "Submitting Ticket..." : "Submit Complaint 🚀"}
             </button>
           </div>
         </form>
@@ -112,19 +134,136 @@ const SubmitComplaint = () => {
   );
 };
 
-const styles = {
-  page:      { padding: "2rem", maxWidth: "600px", margin: "0 auto" },
-  card:      { padding: "2.25rem 2.5rem" },
-  title:     { margin: "0 0 0.25rem", color: "var(--text-primary)", fontSize: "1.6rem", fontWeight: "800" },
-  sub:       { margin: "0 0 1.75rem", color: "var(--text-secondary)", fontSize: "0.95rem" },
-  field:     { marginBottom: "1.25rem" },
-  label:     { display: "block", marginBottom: "0.5rem", color: "var(--text-primary)", fontSize: "0.85rem", fontWeight: "600" },
-  option:    { background: "var(--bg-sidebar)", color: "var(--text-primary)" },
-  fileInput: { width: "100%", padding: "0.6rem", border: "1px dashed var(--border-subtle)", borderRadius: "8px", fontSize: "0.88rem", cursor: "pointer", background: "rgba(255,255,255,0.015)", color: "var(--text-secondary)" },
-  btn:       { padding: "0.75rem 1.5rem", fontSize: "0.95rem" },
-  cancelBtn: { padding: "0.75rem 1.5rem", background: "rgba(255,255,255,0.03)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)", borderRadius: "10px", fontSize: "0.95rem", cursor: "pointer", fontWeight: "600", transition: "all 0.2s" },
-  error:     { background: "rgba(244, 63, 94, 0.1)", color: "#f43f5e", border: "1px solid rgba(244, 63, 94, 0.2)", padding: "0.75rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.88rem" },
-  success:   { background: "rgba(52, 211, 153, 0.1)", color: "#34d399", border: "1px solid rgba(52, 211, 153, 0.2)", padding: "0.75rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.88rem" },
+const s = {
+  page: {
+    padding: "2rem 1rem",
+    maxWidth: "750px",
+    margin: "0 auto"
+  },
+  header: {
+    marginBottom: "1.75rem"
+  },
+  headerTitle: {
+    fontFamily: "var(--font-heading)",
+    color: "var(--text-primary)",
+    fontSize: "1.85rem",
+    fontWeight: "800",
+    margin: "0 0 0.35rem"
+  },
+  headerSub: {
+    color: "var(--text-secondary)",
+    fontSize: "0.92rem",
+    margin: 0
+  },
+  card: {
+    padding: "2.25rem",
+    borderRadius: "20px",
+    background: "var(--bg-surface)",
+    border: "1px solid var(--border-subtle)",
+    boxShadow: "var(--shadow-md)"
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1.25rem"
+  },
+  rowTwo: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "1rem"
+  },
+  field: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.45rem"
+  },
+  label: {
+    color: "var(--text-primary)",
+    fontSize: "0.85rem",
+    fontWeight: "600"
+  },
+  input: {
+    background: "rgba(15, 23, 42, 0.6)",
+    border: "1px solid var(--border-subtle)",
+    borderRadius: "10px",
+    padding: "0.75rem 1rem",
+    color: "var(--text-primary)",
+    fontSize: "0.92rem",
+    outline: "none"
+  },
+  select: {
+    background: "rgba(15, 23, 42, 0.6)",
+    border: "1px solid var(--border-subtle)",
+    borderRadius: "10px",
+    padding: "0.75rem 1rem",
+    color: "var(--text-primary)",
+    fontSize: "0.92rem",
+    outline: "none"
+  },
+  option: {
+    background: "#0d1320",
+    color: "#ffffff"
+  },
+  textarea: {
+    background: "rgba(15, 23, 42, 0.6)",
+    border: "1px solid var(--border-subtle)",
+    borderRadius: "10px",
+    padding: "0.75rem 1rem",
+    color: "var(--text-primary)",
+    fontSize: "0.92rem",
+    outline: "none",
+    height: "130px",
+    resize: "vertical",
+    fontFamily: "inherit"
+  },
+  fileInput: {
+    color: "var(--text-secondary)",
+    fontSize: "0.88rem"
+  },
+  filesBadge: {
+    marginTop: "0.5rem",
+    background: "rgba(56, 189, 248, 0.1)",
+    color: "var(--accent-blue)",
+    border: "1px solid rgba(56, 189, 248, 0.2)",
+    padding: "0.4rem 0.8rem",
+    borderRadius: "8px",
+    fontSize: "0.82rem",
+    fontWeight: "600"
+  },
+  btnRow: {
+    display: "flex",
+    justifyContent: "flex-end",
+    marginTop: "0.5rem"
+  },
+  submitBtn: {
+    background: "var(--grad-primary)",
+    color: "#ffffff",
+    border: "none",
+    padding: "0.8rem 2rem",
+    borderRadius: "10px",
+    fontWeight: "700",
+    fontSize: "0.95rem",
+    cursor: "pointer",
+    boxShadow: "0 4px 15px rgba(2, 132, 199, 0.25)"
+  },
+  error: {
+    background: "rgba(244, 63, 94, 0.12)",
+    color: "#f43f5e",
+    border: "1px solid rgba(244, 63, 94, 0.25)",
+    padding: "0.75rem 1rem",
+    borderRadius: "10px",
+    marginBottom: "1rem",
+    fontSize: "0.88rem"
+  },
+  success: {
+    background: "rgba(16, 185, 129, 0.12)",
+    color: "#10b981",
+    border: "1px solid rgba(16, 185, 129, 0.25)",
+    padding: "0.75rem 1rem",
+    borderRadius: "10px",
+    marginBottom: "1rem",
+    fontSize: "0.88rem"
+  }
 };
 
 export default SubmitComplaint;
