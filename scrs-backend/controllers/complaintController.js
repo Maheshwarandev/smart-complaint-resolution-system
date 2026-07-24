@@ -151,12 +151,9 @@ const getAllComplaints = async (req, res) => {
   }
 
   const complaints = await Complaint.find(filter)
-    // .populate() replaces the ObjectId stored in 'user' with the actual
-    // User document — but only the name and email fields (not password, etc.)
-    .populate('user', 'name email')
-    // Same for assignedTo — replaces the agent's ObjectId with their name/email
-    .populate('assignedTo', 'name email')
-    // Sort by createdAt in descending order (-1 = newest first, 1 = oldest first)
+    .populate('user', 'name email avatar')
+    .populate('assignedTo', 'name email avatar')
+    .populate('comments.user', 'name email avatar role')
     .sort({ createdAt: -1 });
 
   res.status(200).json({
@@ -176,8 +173,9 @@ const getComplaintById = async (req, res) => {
   // req.params.id captures the :id part from the URL
   // Example: GET /api/complaints/64f3c1a2b5e8 → req.params.id = "64f3c1a2b5e8"
   const complaint = await Complaint.findById(req.params.id)
-    .populate('user', 'name email')
-    .populate('assignedTo', 'name email');
+    .populate('user', 'name email avatar')
+    .populate('assignedTo', 'name email avatar')
+    .populate('comments.user', 'name email avatar role');
 
   // If no complaint was found with that ID, return a 404 error
   if (!complaint) {
@@ -440,7 +438,85 @@ const getComplaintStats = async (req, res) => {
 };
 
 
-// Export all 6 functions so the route file can import them
+// ─── 7. addComment ─────────────────────────────────────────────────────────────
+// Handles: POST /api/complaints/:id/comments
+// Allows user, assigned agent, or admin to post a comment/message on the complaint thread.
+const addComment = async (req, res) => {
+  const { text } = req.body;
+  if (!text || text.trim() === '') {
+    throw new AppError('Comment text is required', 400);
+  }
+
+  const complaint = await Complaint.findById(req.params.id);
+  if (!complaint) {
+    throw new AppError('Complaint not found', 404);
+  }
+
+  // Access check: User, assigned Agent, or Admin
+  const isOwner = complaint.user.toString() === req.user._id.toString();
+  const isAssigned = complaint.assignedTo && complaint.assignedTo.toString() === req.user._id.toString();
+  const isAdmin = req.user.role === ROLES.ADMIN;
+
+  if (!isOwner && !isAssigned && !isAdmin) {
+    throw new AppError('Not authorized to comment on this complaint', 403);
+  }
+
+  complaint.comments.push({
+    user: req.user._id,
+    text: text.trim()
+  });
+
+  await complaint.save();
+  await complaint.populate('comments.user', 'name email avatar role');
+
+  res.status(200).json({
+    success: true,
+    data: complaint
+  });
+};
+
+
+// ─── 8. rateComplaint ──────────────────────────────────────────────────────────
+// Handles: POST /api/complaints/:id/rate
+// Allows complaint owner to rate a resolved or closed complaint (1 to 5 stars + feedback).
+const rateComplaint = async (req, res) => {
+  const { score, feedback } = req.body;
+  const numericScore = Number(score);
+
+  if (!numericScore || numericScore < 1 || numericScore > 5) {
+    throw new AppError('Rating score must be a number between 1 and 5', 400);
+  }
+
+  const complaint = await Complaint.findById(req.params.id);
+  if (!complaint) {
+    throw new AppError('Complaint not found', 404);
+  }
+
+  // Owner guard
+  if (complaint.user.toString() !== req.user._id.toString()) {
+    throw new AppError('Only the complaint author can submit feedback', 403);
+  }
+
+  if (complaint.status !== COMPLAINT_STATUS.RESOLVED && complaint.status !== COMPLAINT_STATUS.CLOSED) {
+    throw new AppError('You can only rate complaints that are Resolved or Closed', 400);
+  }
+
+  complaint.rating = {
+    score: numericScore,
+    feedback: feedback ? feedback.trim() : '',
+    ratedAt: new Date()
+  };
+
+  await complaint.save();
+
+  res.status(200).json({
+    success: true,
+    data: complaint
+  });
+};
+
+
+// Export all functions so the route file can import them
 module.exports = {
   createComplaint,
   getAllComplaints,
@@ -448,4 +524,6 @@ module.exports = {
   updateComplaint,
   deleteComplaint,
   getComplaintStats,
+  addComment,
+  rateComplaint,
 };

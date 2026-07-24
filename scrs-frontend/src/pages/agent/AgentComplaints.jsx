@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { getAllComplaintsAPI, updateComplaintAPI } from "../../api/complaintAPI";
+import { getAllComplaintsAPI, updateComplaintAPI, addCommentAPI } from "../../api/complaintAPI";
 import useAuth from "../../hooks/useAuth";
 import Spinner from "../../components/common/Spinner";
 import ActivityTimeline from "../../components/common/ActivityTimeline";
 import AttachmentList from "../../components/common/AttachmentList";
+import CommentThread from "../../components/common/CommentThread";
+import StarRating from "../../components/common/StarRating";
+import { exportComplaintsToCSV } from "../../utils/csvExporter";
 
 const STATUS_COLORS = {
   Open: { bg: "rgba(59, 130, 246, 0.15)", color: "#60a5fa" },
@@ -25,6 +28,7 @@ const AgentComplaints = () => {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
@@ -65,6 +69,11 @@ const AgentComplaints = () => {
     }
   };
 
+  const handleAddComment = async (complaintId, text) => {
+    const res = await addCommentAPI(complaintId, text);
+    setComplaints(prev => prev.map(c => c._id === complaintId ? res.data.data : c));
+  };
+
   const handleSaveEdit = async (complaintId) => {
     try {
       await updateComplaintAPI(complaintId, editData);
@@ -78,23 +87,56 @@ const AgentComplaints = () => {
     }
   };
 
+  const filtered = complaints.filter(c => {
+    return search.trim() === "" ||
+      c.title.toLowerCase().includes(search.toLowerCase()) ||
+      c.category.toLowerCase().includes(search.toLowerCase()) ||
+      (c.user?.name || "").toLowerCase().includes(search.toLowerCase());
+  });
+
   if (loading) return <Spinner />;
 
   const s = styles;
   return (
     <div style={s.page} className="animate-fade-in">
-      <h1 style={s.title}>My Assigned Complaints</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+        <h1 style={s.title}>My Assigned Complaints</h1>
+        <button 
+          onClick={() => exportComplaintsToCSV(filtered, "Agent_Assigned_Complaints.csv")}
+          style={{
+            background: "rgba(56, 189, 248, 0.12)", color: "var(--accent-blue)",
+            border: "1px solid rgba(56, 189, 248, 0.25)", padding: "0.5rem 1.1rem",
+            borderRadius: "10px", fontWeight: "700", cursor: "pointer", fontSize: "0.88rem"
+          }}
+        >
+          📥 Export CSV
+        </button>
+      </div>
       <p style={s.sub}>{complaints.length} complaints assigned to you</p>
 
       {error && <div style={s.error}>{error}</div>}
 
-      {complaints.length === 0 ? (
+      <div style={{ marginBottom: "1.5rem" }}>
+        <input
+          type="text"
+          placeholder="🔍 Search assigned complaints by title, category, complainant..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border-subtle)",
+            borderRadius: "10px", padding: "0.75rem 1rem", color: "var(--text-primary)",
+            fontSize: "0.92rem", width: "100%", boxSizing: "border-box", outline: "none"
+          }}
+        />
+      </div>
+
+      {filtered.length === 0 ? (
         <div style={s.empty} className="glass-panel">
-          No complaints assigned yet. You will see them here once an admin assigns them to you.
+          No matching complaints found.
         </div>
       ) : (
         <div style={s.list}>
-          {complaints.map((c) => {
+          {filtered.map((c) => {
             const sc = STATUS_COLORS[c.status] || {};
             const pc = PRIORITY_COLORS[c.priority] || {};
             const isExpanded = expandedId === c._id;
@@ -157,8 +199,22 @@ const AgentComplaints = () => {
                       <p style={s.description}>{c.description}</p>
                     </div>
 
+                    {/* Customer Rating if available */}
+                    {c.rating?.score && (
+                      <div style={{ marginBottom: "1.5rem" }}>
+                        <p style={s.label}>Customer Feedback & Rating</p>
+                        <StarRating rating={c.rating} readonly={true} />
+                      </div>
+                    )}
+
                     {/* Attachments */}
                     <AttachmentList attachments={c.attachments} />
+
+                    {/* Discussion Thread */}
+                    <CommentThread 
+                      comments={c.comments} 
+                      onAddComment={(text) => handleAddComment(c._id, text)} 
+                    />
 
                     {/* Timeline */}
                     <ActivityTimeline history={c.history} />

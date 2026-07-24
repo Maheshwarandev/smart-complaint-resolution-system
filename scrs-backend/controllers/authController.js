@@ -160,15 +160,69 @@ const login = async (req, res) => {
 
 
 // ─── getMe CONTROLLER ─────────────────────────────────────────────────────────
-// Handles: GET /api/auth/me
-//
-// This route is protected — protect middleware runs first and sets req.user.
-// So by the time getMe runs, req.user is the full user object from the database.
-// We just return it.
 const getMe = async (req, res) => {
   res.status(200).json({
     success: true,
-    data: req.user, // already loaded by the protect middleware
+    data: req.user,
+  });
+};
+
+const cloudinary = require('../config/cloudinary');
+
+// ─── updateProfile CONTROLLER ────────────────────────────────────────────────
+// Handles: PUT /api/auth/profile
+// Allows logged-in users to update name, password, or upload a new avatar photo.
+const updateProfile = async (req, res) => {
+  const user = await User.findById(req.user._id).select('+password');
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  const { name, password } = req.body;
+
+  if (name) {
+    user.name = validateName(name);
+  }
+
+  if (password && password.trim() !== '') {
+    user.password = validatePassword(password);
+  }
+
+  // Handle avatar upload if a file was attached
+  if (req.file) {
+    try {
+      const uploadToCloudinary = (fileBuffer) => {
+        return new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: 'scrs_avatars' },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve(result);
+            }
+          );
+          uploadStream.end(fileBuffer);
+        });
+      };
+
+      const result = await uploadToCloudinary(req.file.buffer);
+      user.avatar = result.secure_url;
+    } catch (err) {
+      throw new AppError(`Avatar upload failed: ${err.message}`, 500);
+    }
+  }
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    data: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+      createdAt: user.createdAt
+    }
   });
 };
 
@@ -178,4 +232,5 @@ module.exports = {
   register,
   login,
   getMe,
+  updateProfile,
 };

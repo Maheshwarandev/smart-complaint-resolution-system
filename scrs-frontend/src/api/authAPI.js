@@ -9,3 +9,8 @@ export const loginAPI = (data) =>
 
 export const getMeAPI = () =>
   axiosInstance.get("/auth/me");
+
+export const updateProfileAPI = (formData) =>
+  axiosInstance.put("/auth/profile", formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });

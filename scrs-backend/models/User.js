@@ -69,6 +69,12 @@ const userSchema = new mongoose.Schema({
     default: null,  // null if user is not an agent
   },
 
+  // avatar field — Cloudinary image URL for user profile picture
+  avatar: {
+    type: String,
+    default: '',
+  },
+
   // createdAt — automatically set to the current date when user is created
   createdAt: {
     type: Date,

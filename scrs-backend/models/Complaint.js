@@ -110,6 +110,46 @@ const complaintSchema = new mongoose.Schema(
         uploadedAt: { type: Date, default: Date.now }
       }
     ],
+
+    // ── comments ──────────────────────────────────────────────────────────────
+    // Discussion thread between User, Agent, and Admin
+    comments: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true
+        },
+        text: {
+          type: String,
+          required: true,
+          trim: true
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now
+        }
+      }
+    ],
+
+    // ── rating ────────────────────────────────────────────────────────────────
+    // User feedback and rating after complaint is resolved or closed
+    rating: {
+      score: {
+        type: Number,
+        min: 1,
+        max: 5,
+        default: null
+      },
+      feedback: {
+        type: String,
+        default: ''
+      },
+      ratedAt: {
+        type: Date,
+        default: null
+      }
+    }
   },
 
   // ─── SCHEMA OPTIONS ─────────────────────────────────────────────────────────

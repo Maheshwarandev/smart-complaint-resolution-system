@@ -6,6 +6,15 @@
 
 // Import mongoose — the library that connects Node.js to MongoDB
 const mongoose = require('mongoose');
+const dns = require('dns');
+
+// Fix for Windows DNS resolution issues with mongodb+srv SRV lookup
+try {
+  dns.setDefaultResultOrder('ipv4first');
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (dnsErr) {
+  // Ignore if custom DNS server set fails
+}
 
 // ─── connectDB FUNCTION ───────────────────────────────────────────────────────
 // This is an async function because connecting to a database takes time.

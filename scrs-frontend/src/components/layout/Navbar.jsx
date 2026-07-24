@@ -132,15 +132,27 @@ const Navbar = () => {
               <span style={styles.name}>{user.name}</span>
               <span style={styles.role}>{user.role}</span>
             </div>
-            <div style={{
-              width: "36px", height: "36px", borderRadius: "50%",
-              background: "var(--grad-primary)", color: "#fff", display: "flex",
-              alignItems: "center", justifyContent: "center", fontWeight: "700",
-              boxShadow: "0 0 10px rgba(56, 189, 248, 0.3)",
-              fontFamily: "var(--font-heading)"
-            }}>
-              {user.name?.[0]?.toUpperCase() || "U"}
-            </div>
+            {user.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user.name}
+                style={{
+                  width: "36px", height: "36px", borderRadius: "50%",
+                  objectFit: "cover", border: "1px solid var(--accent-blue)",
+                  boxShadow: "0 0 10px rgba(56, 189, 248, 0.3)"
+                }}
+              />
+            ) : (
+              <div style={{
+                width: "36px", height: "36px", borderRadius: "50%",
+                background: "var(--grad-primary)", color: "#fff", display: "flex",
+                alignItems: "center", justifyContent: "center", fontWeight: "700",
+                boxShadow: "0 0 10px rgba(56, 189, 248, 0.3)",
+                fontFamily: "var(--font-heading)"
+              }}>
+                {user.name?.[0]?.toUpperCase() || "U"}
+              </div>
+            )}
             <button 
               onClick={handleLogout} 
               onMouseEnter={() => setHoverLogout(true)}

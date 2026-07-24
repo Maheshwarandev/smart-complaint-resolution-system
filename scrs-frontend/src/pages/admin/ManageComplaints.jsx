@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { getAllComplaintsAPI, updateComplaintAPI } from "../../api/complaintAPI";
+import { getAllComplaintsAPI, updateComplaintAPI, addCommentAPI } from "../../api/complaintAPI";
 import { getAllAgentsAPI, assignComplaintAPI } from "../../api/adminAPI";
 import Spinner from "../../components/common/Spinner";
 import ActivityTimeline from "../../components/common/ActivityTimeline";
 import AttachmentList from "../../components/common/AttachmentList";
+import CommentThread from "../../components/common/CommentThread";
+import StarRating from "../../components/common/StarRating";
+import { exportComplaintsToCSV } from "../../utils/csvExporter";
 
 const STATUS_COLORS = {
   Open:          { bg: "rgba(59, 130, 246, 0.15)", color: "#60a5fa" },
@@ -17,6 +20,7 @@ const ManageComplaints = () => {
   const [agents,     setAgents]     = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [filter,     setFilter]     = useState("All");
+  const [search,     setSearch]     = useState("");
   const [error,      setError]      = useState("");
 
   const [expandedId, setExpandedId] = useState(null);
@@ -59,30 +63,66 @@ const ManageComplaints = () => {
     }
   };
 
-  const filtered = filter === "All"
-    ? complaints
-    : complaints.filter(c => c.status === filter);
+  const handleAddComment = async (complaintId, text) => {
+    const res = await addCommentAPI(complaintId, text);
+    setComplaints(prev => prev.map(c => c._id === complaintId ? res.data.data : c));
+  };
+
+  const filtered = complaints.filter(c => {
+    const matchesStatus = filter === "All" || c.status === filter;
+    const matchesSearch = search.trim() === "" ||
+      c.title.toLowerCase().includes(search.toLowerCase()) ||
+      c.category.toLowerCase().includes(search.toLowerCase()) ||
+      (c.user?.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.assignedTo?.name || "").toLowerCase().includes(search.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
 
   if (loading) return <Spinner />;
 
   const s = styles;
   return (
     <div style={s.page} className="animate-fade-in">
-      <h1 style={s.title}>Manage Complaints</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+        <h1 style={s.title}>Manage Complaints</h1>
+        <button 
+          onClick={() => exportComplaintsToCSV(filtered, "All_System_Complaints.csv")}
+          style={{
+            background: "rgba(56, 189, 248, 0.12)", color: "var(--accent-blue)",
+            border: "1px solid rgba(56, 189, 248, 0.25)", padding: "0.5rem 1.1rem",
+            borderRadius: "10px", fontWeight: "700", cursor: "pointer", fontSize: "0.88rem"
+          }}
+        >
+          📥 Export CSV
+        </button>
+      </div>
       <p style={s.sub}>{complaints.length} total complaints</p>
 
       {error && <div style={s.error}>{error}</div>}
 
-      {/* Filter tabs */}
-      <div style={s.tabs}>
-        {["All", "Open", "In Progress", "Resolved", "Closed"].map(tab => (
-          <button key={tab} onClick={() => setFilter(tab)}
-            style={{ ...s.tab, ...(filter === tab ? s.activeTab : {}) }}
-            className={filter !== tab ? "hover-lift" : ""}
-          >
-            {tab}
-          </button>
-        ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
+        <input
+          type="text"
+          placeholder="🔍 Search all complaints by title, category, complainant, or assigned agent..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border-subtle)",
+            borderRadius: "10px", padding: "0.75rem 1rem", color: "var(--text-primary)",
+            fontSize: "0.92rem", width: "100%", boxSizing: "border-box", outline: "none"
+          }}
+        />
+        {/* Filter tabs */}
+        <div style={s.tabs}>
+          {["All", "Open", "In Progress", "Resolved", "Closed"].map(tab => (
+            <button key={tab} onClick={() => setFilter(tab)}
+              style={{ ...s.tab, ...(filter === tab ? s.activeTab : {}) }}
+              className={filter !== tab ? "hover-lift" : ""}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={s.list}>
@@ -116,6 +156,10 @@ const ManageComplaints = () => {
                 <p style={s.desc}>{(c.description?.slice(0, 120) ?? '') + (c.description?.length > 120 ? '...' : '')}</p>
               )}
 
+              {c.rating?.score && !isExpanded && (
+                <StarRating rating={c.rating} readonly={true} />
+              )}
+
               {c.resolutionNote && !isExpanded && (
                 <div style={s.note}>💬 Resolution: {c.resolutionNote}</div>
               )}
@@ -135,7 +179,19 @@ const ManageComplaints = () => {
                     </div>
                   )}
 
+                  {c.rating?.score && (
+                    <div style={{ marginBottom: "1.5rem" }}>
+                      <p style={s.controlLabel}>User Feedback & Rating</p>
+                      <StarRating rating={c.rating} readonly={true} />
+                    </div>
+                  )}
+
                   <AttachmentList attachments={c.attachments} />
+
+                  <CommentThread 
+                    comments={c.comments} 
+                    onAddComment={(text) => handleAddComment(c._id, text)} 
+                  />
 
                   <ActivityTimeline history={c.history} />
 
