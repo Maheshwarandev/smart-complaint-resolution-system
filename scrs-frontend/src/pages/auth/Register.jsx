@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
-import { registerAPI } from "../../api/authAPI";
-import useAuth from "../../hooks/useAuth";
+import { registerAPI } from "../../api";
+import { useAuth } from "../../context";
 
 const Register = () => {
   const { user } = useAuth();

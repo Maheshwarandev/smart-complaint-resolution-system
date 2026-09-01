@@ -1,10 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider, ThemeProvider, useAuth } from "./context";
 import { ROLES } from "./constants";
-import ProtectedRoute from "./components/layout/ProtectedRoute";
-import MainLayout from "./components/layout/MainLayout";
-import useAuth from "./hooks/useAuth";
+import { ProtectedRoute, MainLayout } from "./components";
 
 // Auth Pages
 import Login    from "./pages/auth/Login";

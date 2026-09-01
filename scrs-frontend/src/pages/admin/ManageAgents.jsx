@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { getAllAgentsAPI, updateUserRoleAPI, generateAgentSecurityCodeAPI } from "../../api/adminAPI";
-import Spinner from "../../components/common/Spinner";
-import ConfirmModal from "../../components/common/ConfirmModal";
+import { getAllAgentsAPI, updateUserRoleAPI, generateAgentSecurityCodeAPI } from "../../api";
+import { Spinner, ConfirmModal } from "../../components";
 
 const ManageAgents = () => {
   const [agents, setAgents] = useState([]);

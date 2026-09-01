@@ -1,5 +1,5 @@
 import { useState } from "react";
-import useAuth from "../../hooks/useAuth";
+import { useAuth } from "../context";
 
 const CommentThread = ({ comments = [], onAddComment }) => {
   const { user } = useAuth();

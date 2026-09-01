@@ -54,7 +54,7 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 // asyncHandler → wraps async functions so errors are caught automatically
 // Without this, any error thrown inside an async controller would cause
 // Express to hang (not send a response) — asyncHandler fixes that.
-const asyncHandler = require('../utils/asyncHandler');
+const { asyncHandler } = require('../utils/errorHandler');
 
 // Import system constants
 const { ROLES } = require('../utils/constants');

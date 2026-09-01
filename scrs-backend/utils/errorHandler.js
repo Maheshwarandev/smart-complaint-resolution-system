@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// utils/errorHandler.js — CUSTOM ERROR CLASS & ERROR MIDDLEWARE
+// utils/errorHandler.js — ERROR UTILITIES & MIDDLEWARE
 //
-// This file exports two things:
-//   1. AppError  — a custom error class you can throw anywhere in the app
-//   2. errorHandler — Express middleware that catches errors and returns JSON
+// This file exports three things:
+//   1. AppError     — a custom error class you can throw anywhere in the app
+//   2. asyncHandler — wrapper to catch errors in async route controllers
+//   3. errorHandler — Express middleware that catches errors and returns JSON
 // ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -42,7 +43,15 @@ class AppError extends Error {
 }
 
 
-// ─── 2. errorHandler MIDDLEWARE ───────────────────────────────────────────────
+// ─── 2. asyncHandler WRAPPER ──────────────────────────────────────────────────
+// Wraps async route handlers and catches any unhandled Promise rejections,
+// forwarding them to the global errorHandler middleware.
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+
+// ─── 3. errorHandler MIDDLEWARE ───────────────────────────────────────────────
 // This is an Express error-handling middleware function.
 // Express knows it's an error handler because it has 4 parameters.
 // The first parameter 'err' is the error that was passed to next(err).
@@ -69,8 +78,9 @@ const errorHandler = (err, req, res, next) => {
 };
 
 
-// Export both so other files can import them
+// Export all error utilities
 module.exports = {
   errorHandler,
   AppError,
+  asyncHandler,
 };

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import useAuth from "../../hooks/useAuth";
+import { useAuth } from "../context";
 
 const Sidebar = ({ isOpen }) => {
   const { user, logout } = useAuth();

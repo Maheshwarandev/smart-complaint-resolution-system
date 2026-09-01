@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createComplaintAPI } from "../../api/complaintAPI";
+import { createComplaintAPI } from "../../api";
 import { COMPLAINT_CATEGORY, COMPLAINT_PRIORITY } from "../../constants";
 
 const SubmitComplaint = () => {

@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom";
-import useAuth from "../../hooks/useAuth";
-import Spinner from "../common/Spinner";
+import { useAuth } from "../context";
+import Spinner from "./Spinner";
 
 // Wraps any route that requires authentication
 // allowedRoles: optional array — if provided, also checks role

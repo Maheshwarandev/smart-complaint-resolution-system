@@ -17,7 +17,7 @@ const rateLimit = require('express-rate-limit');
 const { register, login, getMe, updateProfile } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
-const asyncHandler = require('../utils/asyncHandler');
+const { asyncHandler } = require('../utils/errorHandler');
 
 const router = express.Router();
 

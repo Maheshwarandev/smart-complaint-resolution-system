@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getDashboardAPI } from "../../api/adminAPI";
-import useAuth from "../../hooks/useAuth";
-import Spinner from "../../components/common/Spinner";
+import { getDashboardAPI } from "../../api";
+import { useAuth } from "../../context";
+import { Spinner } from "../../components";
 
 const STATUS_META = {
   Open:          { bg: "rgba(59, 130, 246, 0.15)", color: "#60a5fa", bar: "#3b82f6" },

@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
-import { getAllComplaintsAPI, updateComplaintAPI, addCommentAPI } from "../../api/complaintAPI";
-import { getAllAgentsAPI, assignComplaintAPI } from "../../api/adminAPI";
-import Spinner from "../../components/common/Spinner";
-import ActivityTimeline from "../../components/common/ActivityTimeline";
-import AttachmentList from "../../components/common/AttachmentList";
-import CommentThread from "../../components/common/CommentThread";
-import StarRating from "../../components/common/StarRating";
+import { getAllComplaintsAPI, updateComplaintAPI, addCommentAPI, getAllAgentsAPI, assignComplaintAPI } from "../../api";
+import { Spinner, ActivityTimeline, AttachmentList, CommentThread, StarRating } from "../../components";
 import { exportComplaintsToCSV } from "../../utils/csvExporter";
 
 const STATUS_COLORS = {

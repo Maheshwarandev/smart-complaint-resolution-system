@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, Navigate, useLocation } from "react-router-dom";
-import { loginAPI } from "../../api/authAPI";
-import useAuth from "../../hooks/useAuth";
+import { loginAPI } from "../../api";
+import { useAuth } from "../../context";
 
 const Login = () => {
   const { saveAuth, user } = useAuth();
@@ -138,6 +138,45 @@ const Login = () => {
           </button>
         </form>
 
+        {/* Demo Credentials Quick-Fill */}
+        <div style={s.demoSection}>
+          <div style={s.demoDivider}>
+            <span>⚡ Quick Demo Logins</span>
+          </div>
+          <div style={s.demoBtnGroup}>
+            <button
+              type="button"
+              style={s.demoBtn}
+              onClick={() => {
+                setShowAgentCode(false);
+                setForm({ email: "john@example.com", password: "userpassword123", agentSecurityCode: "" });
+              }}
+            >
+              👤 User
+            </button>
+            <button
+              type="button"
+              style={s.demoBtn}
+              onClick={() => {
+                setShowAgentCode(false);
+                setForm({ email: "alex@example.com", password: "agentpassword123", agentSecurityCode: "" });
+              }}
+            >
+              🛠️ Agent
+            </button>
+            <button
+              type="button"
+              style={s.demoBtn}
+              onClick={() => {
+                setShowAgentCode(false);
+                setForm({ email: "admin@scrs.com", password: "adminpassword123", agentSecurityCode: "" });
+              }}
+            >
+              👑 Admin
+            </button>
+          </div>
+        </div>
+
         <p style={s.footer}>
           Don't have an account?{" "}
           <Link to="/register" style={s.link}>
@@ -267,6 +306,36 @@ const styles = {
     marginBottom: "1.25rem",
     fontSize: "0.88rem",
     textAlign: "left"
+  },
+  demoSection: {
+    marginTop: "1.5rem",
+  },
+  demoDivider: {
+    display: "flex",
+    alignItems: "center",
+    textAlign: "center",
+    color: "var(--text-muted)",
+    fontSize: "0.78rem",
+    fontWeight: "600",
+    marginBottom: "0.75rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  },
+  demoBtnGroup: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: "0.5rem",
+  },
+  demoBtn: {
+    background: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid var(--border-subtle)",
+    borderRadius: "8px",
+    padding: "0.5rem 0.25rem",
+    color: "var(--text-primary)",
+    fontSize: "0.8rem",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
   },
   footer: {
     textAlign: "center",

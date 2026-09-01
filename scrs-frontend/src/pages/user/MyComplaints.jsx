@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getAllComplaintsAPI, deleteComplaintAPI, addCommentAPI, rateComplaintAPI } from "../../api/complaintAPI";
-import Spinner from "../../components/common/Spinner";
-import ConfirmModal from "../../components/common/ConfirmModal";
-import ActivityTimeline from "../../components/common/ActivityTimeline";
-import AttachmentList from "../../components/common/AttachmentList";
-import CommentThread from "../../components/common/CommentThread";
-import StarRating from "../../components/common/StarRating";
+import { getAllComplaintsAPI, deleteComplaintAPI, addCommentAPI, rateComplaintAPI } from "../../api";
+import { Spinner, ConfirmModal, ActivityTimeline, AttachmentList, CommentThread, StarRating } from "../../components";
 import { exportComplaintsToCSV } from "../../utils/csvExporter";
 
 const STATUS_COLORS = {

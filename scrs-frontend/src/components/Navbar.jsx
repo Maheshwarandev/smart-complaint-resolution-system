@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import useAuth from "../../hooks/useAuth";
-import useTheme from "../../hooks/useTheme";
+import { useAuth, useTheme } from "../context";
 
 const Navbar = () => {
   const { user, logout } = useAuth();

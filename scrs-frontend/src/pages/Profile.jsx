@@ -1,6 +1,6 @@
 import { useState } from "react";
-import useAuth from "../hooks/useAuth";
-import { updateProfileAPI } from "../api/authAPI";
+import { useAuth } from "../context";
+import { updateProfileAPI } from "../api";
 
 const Profile = () => {
   const { user, saveAuth } = useAuth();

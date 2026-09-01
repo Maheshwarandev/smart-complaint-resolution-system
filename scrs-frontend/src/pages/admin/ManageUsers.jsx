@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { getAllUsersAPI, updateUserRoleAPI, deleteUserAPI } from "../../api/adminAPI";
+import { getAllUsersAPI, updateUserRoleAPI, deleteUserAPI } from "../../api";
 import { ROLES } from "../../constants";
-import Spinner from "../../components/common/Spinner";
-import ConfirmModal from "../../components/common/ConfirmModal";
+import { Spinner, ConfirmModal } from "../../components";
 
 const ManageUsers = () => {
   const [users,       setUsers]       = useState([]);
