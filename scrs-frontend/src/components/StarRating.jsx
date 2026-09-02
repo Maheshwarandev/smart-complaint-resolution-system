@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Star } from "lucide-react";
 
 const StarRating = ({ rating, onRate, readonly = false }) => {
   const [hoverScore, setHoverScore] = useState(0);
@@ -35,9 +36,7 @@ const StarRating = ({ rating, onRate, readonly = false }) => {
       <div style={s.readonlyContainer}>
         <div style={s.starsRow}>
           {[1, 2, 3, 4, 5].map((star) => (
-            <span key={star} style={{ color: star <= starCount ? "#f59e0b" : "#475569", fontSize: "1rem" }}>
-              ★
-            </span>
+            <Star key={star} size={16} fill={star <= starCount ? "#f59e0b" : "none"} color={star <= starCount ? "#f59e0b" : "#475569"} />
           ))}
           <span style={s.scoreBadge}>{starCount}/5</span>
         </div>
@@ -50,7 +49,7 @@ const StarRating = ({ rating, onRate, readonly = false }) => {
 
   return (
     <form onSubmit={handleSubmit} style={s.interactiveCard} className="glass-panel">
-      <h4 style={s.cardTitle}>⭐ Rate Resolution Quality</h4>
+      <h4 style={s.cardTitle}><Star size={16} style={{verticalAlign:"middle",marginRight:"0.3rem"}} /> Rate Resolution Quality</h4>
       <p style={s.cardSub}>How satisfied are you with the resolution of this complaint?</p>
 
       <div style={s.starsInteractiveRow}>

@@ -1,38 +1,19 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// utils/constants.js — SYSTEM-WIDE CONSTANTS
-//
-// Centralized definitions for:
-//   - User roles (who can do what)
-//   - Complaint statuses (lifecycle states)
-//   - Complaint categories (types of issues)
-//   - Complaint priorities (urgency levels)
-//
-// By using constants, we avoid magic strings and make changes easy.
-// If we need to rename a role, we change it in ONE place, not everywhere.
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─── USER ROLES ────────────────────────────────────────────────────────────────
-// Three distinct roles with different permissions
 const ROLES = {
-  USER: 'user',      // Can submit complaints, view their own
-  AGENT: 'agent',    // Can view and update all complaints, assign to self
-  ADMIN: 'admin',    // Can manage users, agents, and all complaints
+  USER: 'user',
+  AGENT: 'agent',
+  ADMIN: 'admin',
 };
 
-// ─── COMPLAINT STATUSES ────────────────────────────────────────────────────────
-// Lifecycle states a complaint moves through
 const COMPLAINT_STATUS = {
-  OPEN: 'Open',           // Just submitted, waiting for agent
-  IN_PROGRESS: 'In Progress',  // Agent is investigating
-  RESOLVED: 'Resolved',   // Problem fixed, pending closure
-  CLOSED: 'Closed',       // Complaint concluded
+  OPEN: 'Open',
+  IN_PROGRESS: 'In Progress',
+  RESOLVED: 'Resolved',
+  CLOSED: 'Closed',
 };
 
-// ─── COMPLAINT CATEGORIES ──────────────────────────────────────────────────────
-// Types of complaints the system accepts
 const COMPLAINT_CATEGORY = {
-  TECHNICAL: 'technical',        // General technical issues
-  INFRASTRUCTURE: 'infrastructure', // Building, internet, power, water
+  TECHNICAL: 'technical',
+  INFRASTRUCTURE: 'infrastructure',
   ELECTRICAL: 'electrical',
   NETWORK: 'network',
   SOFTWARE: 'software',
@@ -43,31 +24,34 @@ const COMPLAINT_CATEGORY = {
   FINANCE: 'finance',
   HR: 'hr',
   GENERAL: 'general',
-  OTHER: 'other',              // Miscellaneous
+  OTHER: 'other',
 };
 
-// ─── COMPLAINT PRIORITIES ──────────────────────────────────────────────────────
-// How urgent a complaint is (affects resolution timeline)
 const COMPLAINT_PRIORITY = {
-  LOW: 'low',           // Can wait
-  MEDIUM: 'medium',     // Normal timeline
-  HIGH: 'high',         // Urgent
-  CRITICAL: 'critical', // Emergency
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  CRITICAL: 'critical',
 };
 
-// ─── DEFAULT VALUES ───────────────────────────────────────────────────────────
-// Sensible defaults when fields are optional
 const DEFAULTS = {
   DEFAULT_PRIORITY: COMPLAINT_PRIORITY.MEDIUM,
   DEFAULT_ROLE: ROLES.USER,
   DEFAULT_STATUS: COMPLAINT_STATUS.OPEN,
 };
 
-// Export as object for easy access
+const SLA_HOURS_BY_PRIORITY = {
+  [COMPLAINT_PRIORITY.CRITICAL]: 4,   // 4 hours for Critical
+  [COMPLAINT_PRIORITY.HIGH]: 24,      // 24 hours for High
+  [COMPLAINT_PRIORITY.MEDIUM]: 48,    // 48 hours for Medium
+  [COMPLAINT_PRIORITY.LOW]: 72,       // 72 hours for Low
+};
+
 module.exports = {
   ROLES,
   COMPLAINT_STATUS,
   COMPLAINT_CATEGORY,
   COMPLAINT_PRIORITY,
+  SLA_HOURS_BY_PRIORITY,
   DEFAULTS,
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getAllComplaintsAPI, updateComplaintAPI, addCommentAPI, getAllAgentsAPI, assignComplaintAPI } from "../../api";
-import { Spinner, ActivityTimeline, AttachmentList, CommentThread, StarRating } from "../../components";
+import { Spinner, ActivityTimeline, AttachmentList, CommentThread, StarRating, SLABadge } from "../../components";
 import { exportComplaintsToCSV } from "../../utils/csvExporter";
 
 const STATUS_COLORS = {
@@ -132,7 +132,15 @@ const ManageComplaints = () => {
                 style={{ ...s.cardTop, cursor: "pointer" }}
               >
                 <div>
-                  <h3 style={s.cardTitle}>{c.title}</h3>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.25rem" }}>
+                    <h3 style={s.cardTitle}>{c.title}</h3>
+                    <SLABadge 
+                      deadline={c.slaDeadline} 
+                      breached={c.slaBreached} 
+                      status={c.status} 
+                      resolvedAt={c.resolvedAt} 
+                    />
+                  </div>
                   <p style={s.meta}>
                     👤 {c.user?.name} · 📁 {c.category} · ⚡ {c.priority} · 🗓 {new Date(c.createdAt).toLocaleDateString()}
                   </p>

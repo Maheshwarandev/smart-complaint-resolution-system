@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../context";
+import { MessageSquare, Send } from "lucide-react";
 
 const CommentThread = ({ comments = [], onAddComment }) => {
   const { user } = useAuth();
@@ -23,7 +24,7 @@ const CommentThread = ({ comments = [], onAddComment }) => {
 
   return (
     <div style={s.container}>
-      <h4 style={s.headerTitle}>💬 Conversation Thread ({comments.length})</h4>
+      <h4 style={s.headerTitle}><MessageSquare size={16} style={{verticalAlign:"middle",marginRight:"0.4rem"}} /> Conversation Thread ({comments.length})</h4>
 
       <div style={s.commentList}>
         {comments.length === 0 ? (
@@ -69,7 +70,7 @@ const CommentThread = ({ comments = [], onAddComment }) => {
           style={s.input}
         />
         <button type="submit" disabled={loading || !text.trim()} style={s.sendBtn}>
-          {loading ? "Sending..." : "Send 🚀"}
+          {loading ? "Sending..." : <><Send size={14} /> Send</>}
         </button>
       </form>
     </div>

@@ -1,4 +1,4 @@
-import React from "react";
+import { Paperclip, ExternalLink } from "lucide-react";
 
 const AttachmentList = ({ attachments }) => {
   if (!attachments || attachments.length === 0) return null;
@@ -6,7 +6,7 @@ const AttachmentList = ({ attachments }) => {
   const s = styles;
   return (
     <div style={s.section}>
-      <h4 style={s.sectionTitle}>📎 Attachments</h4>
+      <h4 style={s.sectionTitle}><Paperclip size={16} style={{verticalAlign:"middle",marginRight:"0.4rem"}} /> Attachments</h4>
       <div style={s.attachmentList}>
         {attachments.map((att, i) => {
           const isFullUrl = att.filepath && (att.filepath.startsWith("http://") || att.filepath.startsWith("https://"));

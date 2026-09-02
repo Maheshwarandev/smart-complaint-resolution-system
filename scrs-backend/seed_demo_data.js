@@ -1,6 +1,14 @@
 require('dotenv').config();
+const dns = require('node:dns');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+
+try {
+  dns.setDefaultResultOrder('ipv4first');
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {
+  // Ignore
+}
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://maheshwaran852485:GQPnvoAfpe9LsoPH@cluster0.t9zyrqz.mongodb.net/scrs_db?retryWrites=true&w=majority";
 

@@ -1,4 +1,4 @@
-import React from "react";
+import { Clock } from "lucide-react";
 
 const ActivityTimeline = ({ history }) => {
   if (!history || history.length === 0) return null;
@@ -6,7 +6,7 @@ const ActivityTimeline = ({ history }) => {
   const s = styles;
   return (
     <div style={s.section}>
-      <h4 style={s.sectionTitle}>⏳ Activity Timeline</h4>
+      <h4 style={s.sectionTitle}><Clock size={16} style={{verticalAlign:"middle",marginRight:"0.4rem"}} /> Activity Timeline</h4>
       <div style={s.timeline}>
         {history.map((h, i) => (
           <div key={i} style={s.timelineItem}>

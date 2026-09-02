@@ -4,7 +4,10 @@ export { default as CommentThread } from "./CommentThread";
 export { default as ConfirmModal } from "./ConfirmModal";
 export { default as Spinner } from "./Spinner";
 export { default as StarRating } from "./StarRating";
+export { default as SLABadge } from "./SLABadge";
+export { default as NotificationBell } from "./NotificationBell";
 export { default as MainLayout } from "./MainLayout";
 export { default as Navbar } from "./Navbar";
 export { default as ProtectedRoute } from "./ProtectedRoute";
 export { default as Sidebar } from "./Sidebar";
+

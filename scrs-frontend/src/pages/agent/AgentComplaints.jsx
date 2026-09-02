@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getAllComplaintsAPI, updateComplaintAPI, addCommentAPI } from "../../api";
 import { useAuth } from "../../context";
-import { Spinner, ActivityTimeline, AttachmentList, CommentThread, StarRating } from "../../components";
+import { Spinner, ActivityTimeline, AttachmentList, CommentThread, StarRating, SLABadge } from "../../components";
 import { exportComplaintsToCSV } from "../../utils/csvExporter";
 
 const STATUS_COLORS = {
@@ -147,6 +147,12 @@ const AgentComplaints = () => {
                 >
                   <div style={s.cardTitle}>
                     <h3 style={s.title3}>{c.title}</h3>
+                    <SLABadge 
+                      deadline={c.slaDeadline} 
+                      breached={c.slaBreached} 
+                      status={c.status} 
+                      resolvedAt={c.resolvedAt} 
+                    />
                     <span
                       style={{
                         ...s.badge,

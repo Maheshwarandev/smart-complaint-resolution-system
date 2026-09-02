@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getAllComplaintsAPI, deleteComplaintAPI, addCommentAPI, rateComplaintAPI } from "../../api";
-import { Spinner, ConfirmModal, ActivityTimeline, AttachmentList, CommentThread, StarRating } from "../../components";
+import { Spinner, ConfirmModal, ActivityTimeline, AttachmentList, CommentThread, StarRating, SLABadge } from "../../components";
 import { exportComplaintsToCSV } from "../../utils/csvExporter";
+import { Search, Download, Trash2, Eye, EyeOff } from "lucide-react";
 
 const STATUS_COLORS = {
   Open:          { bg: "rgba(59, 130, 246, 0.15)", color: "#60a5fa" },
@@ -91,7 +92,7 @@ const MyComplaints = () => {
           onClick={() => exportComplaintsToCSV(filtered, "My_Complaints_Report.csv")}
           style={s.exportBtn}
         >
-          📥 Export CSV
+          <Download size={14} /> Export CSV
         </button>
       </div>
 
@@ -101,7 +102,7 @@ const MyComplaints = () => {
       <div style={s.controlsRow}>
         <input
           type="text"
-          placeholder="🔍 Search complaints by title, category..."
+          placeholder="Search complaints by title, category..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={s.searchInput}
@@ -129,7 +130,15 @@ const MyComplaints = () => {
             return (
               <div key={c._id} style={s.card} className="glass-panel hover-lift">
                 <div style={s.cardTop}>
-                  <h3 style={s.cardTitle}>{c.title}</h3>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                    <h3 style={s.cardTitle}>{c.title}</h3>
+                    <SLABadge 
+                      deadline={c.slaDeadline} 
+                      breached={c.slaBreached} 
+                      status={c.status} 
+                      resolvedAt={c.resolvedAt} 
+                    />
+                  </div>
                   <span style={{ ...s.badge, background: sc.bg, color: sc.color }}>
                     {c.status}
                   </span>

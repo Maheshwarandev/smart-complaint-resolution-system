@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createComplaintAPI } from "../../api";
 import { COMPLAINT_CATEGORY, COMPLAINT_PRIORITY } from "../../constants";
+import { Send, Paperclip } from "lucide-react";
 
 const SubmitComplaint = () => {
   const navigate = useNavigate();
@@ -118,14 +119,14 @@ const SubmitComplaint = () => {
             />
             {files.length > 0 && (
               <div style={s.filesBadge}>
-                📎 {files.length} file(s) attached ({files.map(f => f.name).join(", ")})
+                <Paperclip size={14} /> {files.length} file(s) attached ({files.map(f => f.name).join(", ")})
               </div>
             )}
           </div>
 
           <div style={s.btnRow}>
             <button type="submit" disabled={loading} style={s.submitBtn}>
-              {loading ? "Submitting Ticket..." : "Submit Complaint 🚀"}
+              {loading ? <>Submitting Ticket...</> : <><Send size={16} /> Submit Complaint</>}
             </button>
           </div>
         </form>
