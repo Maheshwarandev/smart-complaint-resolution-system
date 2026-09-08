@@ -1,12 +1,9 @@
+import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context";
 import { ROLES } from "../constants";
-import {
-  LayoutDashboard, FileText, Plus, BarChart3, Users,
-  Shield, UserCircle, LogOut, ChevronLeft, ChevronRight,
-} from "lucide-react";
 
-const Sidebar = ({ isOpen, isCollapsed, onToggleCollapse }) => {
+const Sidebar = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -17,126 +14,225 @@ const Sidebar = ({ isOpen, isCollapsed, onToggleCollapse }) => {
 
   if (!user) return null;
 
-  const collapsed = isCollapsed;
-
   return (
-    <aside className={`sidebar-container ${isOpen ? "open" : ""} ${collapsed ? "collapsed" : ""}`}>
-      {/* Collapse toggle */}
-      <button className="sidebar-collapse-toggle" onClick={onToggleCollapse} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
-        {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-      </button>
+    <aside className={`app-sidebar ${isOpen ? "open" : ""}`}>
+      <div>
+        {/* Navigation Group */}
+        <div className="nav-section">NAVIGATION</div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-        {/* Brand badge */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start",
-          gap: "0.5rem", padding: "0.45rem 0.7rem", marginBottom: "0.75rem",
-          borderRadius: "8px", background: "rgba(56, 189, 248, 0.06)",
-          border: "1px solid rgba(56, 189, 248, 0.12)", overflow: "hidden",
-        }}>
-          <div style={{
-            width: "24px", height: "24px", borderRadius: "6px", background: "rgba(56, 189, 248, 0.15)",
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-          }}>
-            <Shield size={13} color="#38bdf8" strokeWidth={2.5} />
-          </div>
-          {!collapsed && (
-            <span className="sidebar-brand-text" style={{
-              color: "var(--text-primary)", fontSize: "0.82rem", fontWeight: "800",
-              fontFamily: "var(--font-heading)", whiteSpace: "nowrap",
-            }}>SCRS</span>
-          )}
+        {user.role === ROLES.USER && (
+          <>
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+              onClick={onClose}
+            >
+              <i className="ti ti-layout-dashboard" />
+              <span>Dashboard</span>
+            </NavLink>
+
+            <NavLink
+              to="/complaints"
+              className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+              onClick={onClose}
+            >
+              <i className="ti ti-ticket" />
+              <span>My Complaints</span>
+            </NavLink>
+
+            <NavLink
+              to="/complaints/new"
+              className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+              onClick={onClose}
+            >
+              <i className="ti ti-plus" />
+              <span>Submit Ticket</span>
+            </NavLink>
+          </>
+        )}
+
+        {user.role === ROLES.AGENT && (
+          <>
+            <NavLink
+              to="/agent/dashboard"
+              className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+              onClick={onClose}
+            >
+              <i className="ti ti-layout-dashboard" />
+              <span>Agent Dashboard</span>
+            </NavLink>
+
+            <NavLink
+              to="/agent/complaints"
+              className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+              onClick={onClose}
+            >
+              <i className="ti ti-headset" />
+              <span>Assigned Queue</span>
+            </NavLink>
+          </>
+        )}
+
+        {user.role === ROLES.ADMIN && (
+          <>
+            <NavLink
+              to="/admin/dashboard"
+              className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+              onClick={onClose}
+            >
+              <i className="ti ti-chart-bar" />
+              <span>System Analytics</span>
+            </NavLink>
+          </>
+        )}
+
+        {/* Management Group for Admin / Agent */}
+        {(user.role === ROLES.ADMIN || user.role === ROLES.AGENT) && (
+          <>
+            <div className="nav-section" style={{ marginTop: "12px" }}>
+              MANAGEMENT
+            </div>
+
+            {user.role === ROLES.ADMIN && (
+              <>
+                <NavLink
+                  to="/admin/complaints"
+                  className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+                  onClick={onClose}
+                >
+                  <i className="ti ti-clipboard-list" />
+                  <span>All Complaints</span>
+                </NavLink>
+
+                <NavLink
+                  to="/admin/users"
+                  className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+                  onClick={onClose}
+                >
+                  <i className="ti ti-users" />
+                  <span>Users Directory</span>
+                </NavLink>
+
+                <NavLink
+                  to="/admin/agents"
+                  className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+                  onClick={onClose}
+                >
+                  <i className="ti ti-shield" />
+                  <span>Support Agents</span>
+                </NavLink>
+              </>
+            )}
+          </>
+        )}
+
+        {/* System Group */}
+        <div className="nav-section" style={{ marginTop: "12px" }}>
+          SYSTEM
         </div>
-
-        {/* Navigation */}
-        <div className="sidebar-group">
-          {!collapsed && <div className="sidebar-label">NAVIGATION</div>}
-
-          {user.role === ROLES.USER && (
-            <>
-              <NavLink to="/dashboard" className={({isActive}) => isActive ? "sidebar-link active" : "sidebar-link"}>
-                <LayoutDashboard size={18} />
-                {!collapsed && <span className="sidebar-link-label">Executive Overview</span>}
-              </NavLink>
-              <NavLink to="/complaints" className={({isActive}) => isActive ? "sidebar-link active" : "sidebar-link"}>
-                <FileText size={18} />
-                {!collapsed && <span className="sidebar-link-label">My Complaints</span>}
-              </NavLink>
-              <NavLink to="/complaints/new" className={({isActive}) => isActive ? "sidebar-link active" : "sidebar-link"}>
-                <Plus size={18} />
-                {!collapsed && <span className="sidebar-link-label">Submit New Ticket</span>}
-              </NavLink>
-            </>
-          )}
-
-          {user.role === ROLES.AGENT && (
-            <>
-              <NavLink to="/agent/dashboard" className={({isActive}) => isActive ? "sidebar-link active" : "sidebar-link"}>
-                <LayoutDashboard size={18} />
-                {!collapsed && <span className="sidebar-link-label">Agent Workspace</span>}
-              </NavLink>
-              <NavLink to="/agent/complaints" className={({isActive}) => isActive ? "sidebar-link active" : "sidebar-link"}>
-                <BarChart3 size={18} />
-                {!collapsed && <span className="sidebar-link-label">Assigned Queue</span>}
-              </NavLink>
-            </>
-          )}
-
-          {user.role === ROLES.ADMIN && (
-            <>
-              <NavLink to="/admin/dashboard" className={({isActive}) => isActive ? "sidebar-link active" : "sidebar-link"}>
-                <BarChart3 size={18} />
-                {!collapsed && <span className="sidebar-link-label">System Analytics</span>}
-              </NavLink>
-              <NavLink to="/admin/users" className={({isActive}) => isActive ? "sidebar-link active" : "sidebar-link"}>
-                <Users size={18} />
-                {!collapsed && <span className="sidebar-link-label">User Management</span>}
-              </NavLink>
-              <NavLink to="/admin/agents" className={({isActive}) => isActive ? "sidebar-link active" : "sidebar-link"}>
-                <Shield size={18} />
-                {!collapsed && <span className="sidebar-link-label">Support Engineers</span>}
-              </NavLink>
-              <NavLink to="/admin/complaints" className={({isActive}) => isActive ? "sidebar-link active" : "sidebar-link"}>
-                <FileText size={18} />
-                {!collapsed && <span className="sidebar-link-label">All System Complaints</span>}
-              </NavLink>
-            </>
-          )}
-        </div>
+        <NavLink
+          to="/profile"
+          className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+          onClick={onClose}
+        >
+          <i className="ti ti-user" />
+          <span>Account Profile</span>
+        </NavLink>
       </div>
 
-      {/* Footer: user profile + logout */}
-      <div className="sidebar-footer">
-        <div className="sidebar-group">
-          {!collapsed && <div className="sidebar-label">ACCOUNT</div>}
-
-          <NavLink to="/profile" className={({isActive}) => isActive ? "sidebar-link active" : "sidebar-link"}>
-            <UserCircle size={18} />
-            {!collapsed && <span className="sidebar-link-label">Profile</span>}
-          </NavLink>
-        </div>
-
-        <div className="sidebar-user-block">
-          <div className="sidebar-user-avatar" style={{
-            background: "linear-gradient(135deg, var(--accent-blue), var(--accent-indigo))",
-          }}>
-            {user.name?.[0]?.toUpperCase() || "U"}
-          </div>
-          {!collapsed && (
-            <div className="sidebar-user-info" style={{ overflow: "hidden", minWidth: 0 }}>
-              <div className="sidebar-user-name">{user.name}</div>
-              <div className="sidebar-user-role">{user.role}</div>
+      {/* User Footer */}
+      <div style={styles.footer}>
+        <div style={styles.userRow}>
+          {user.avatar ? (
+            <img src={user.avatar} alt={user.name} style={styles.avatarImg} />
+          ) : (
+            <div style={styles.avatar}>
+              {user.name?.[0]?.toUpperCase() || "U"}
             </div>
           )}
+          <div style={styles.userText}>
+            <div style={styles.userName}>{user.name}</div>
+            <div style={styles.userRole}>{user.role?.toUpperCase()}</div>
+          </div>
         </div>
 
-        <button onClick={handleLogout} className="sidebar-logout" title="Sign Out">
-          <LogOut size={18} />
-          {!collapsed && <span className="sidebar-logout-label">Sign Out</span>}
+        <button
+          type="button"
+          onClick={handleLogout}
+          style={styles.signOutBtn}
+          title="Sign out of SCRS"
+        >
+          <i className="ti ti-logout" style={{ fontSize: "14px" }} />
+          <span>Sign out</span>
         </button>
       </div>
     </aside>
   );
+};
+
+const styles = {
+  footer: {
+    padding: "16px 14px",
+    borderTop: "1px solid var(--border)",
+    background: "rgba(0,0,0,0.1)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+  },
+  userRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+  avatarImg: {
+    width: "28px",
+    height: "28px",
+    borderRadius: "50%",
+    objectFit: "cover",
+  },
+  avatar: {
+    width: "28px",
+    height: "28px",
+    borderRadius: "50%",
+    background: "var(--brand-muted)",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "12px",
+    fontWeight: "600",
+  },
+  userText: {
+    display: "flex",
+    flexDirection: "column",
+    lineHeight: 1.2,
+    overflow: "hidden",
+  },
+  userName: {
+    fontSize: "12px",
+    fontWeight: "500",
+    color: "var(--text-primary)",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  userRole: {
+    fontSize: "9px",
+    fontFamily: "var(--font-mono)",
+    color: "var(--text-muted)",
+  },
+  signOutBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    color: "var(--urgent)",
+    fontSize: "12px",
+    fontWeight: "500",
+    padding: "4px 0",
+    cursor: "pointer",
+    background: "transparent",
+    border: "none",
+  },
 };
 
 export default Sidebar;

@@ -11,13 +11,14 @@ const {
 } = require('../controllers/complaintController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { asyncHandler } = require('../utils/errorHandler');
+const { ROLES } = require('../utils/constants');
 const upload = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
 
 router.use(protect);
 
-router.get('/stats', authorize('admin', 'agent'), asyncHandler(getComplaintStats));
+router.get('/stats', authorize(ROLES.ADMIN, ROLES.AGENT), asyncHandler(getComplaintStats));
 
 router
   .route('/')

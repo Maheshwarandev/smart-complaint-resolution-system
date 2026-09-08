@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, ThemeProvider, useAuth } from "./context";
 import { ROLES } from "./constants";
-import { ProtectedRoute, MainLayout } from "./components";
+import { ProtectedRoute, MainLayout, ErrorBoundary } from "./components";
 
 // Auth Pages
 import Login    from "./pages/auth/Login";
@@ -37,6 +37,7 @@ const App = () => {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <ErrorBoundary>
         <BrowserRouter>
           <Routes>
 
@@ -84,10 +85,6 @@ const App = () => {
               <ProtectedRoute allowedRoles={[ROLES.ADMIN]}><ManageComplaints /></ProtectedRoute>
             } />
 
-            {/* ── Legacy Admin Route (backward compatibility) ───────────── */}
-            <Route path="/admin" element={
-              <ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>
-            } />
           </Route>
 
           {/* ── Default Redirects ───────────────────────────────────────────── */}
@@ -96,6 +93,7 @@ const App = () => {
 
         </Routes>
       </BrowserRouter>
+        </ErrorBoundary>
     </AuthProvider>
   </ThemeProvider>
   );

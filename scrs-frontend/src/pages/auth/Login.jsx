@@ -1,16 +1,16 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate, Navigate, useLocation } from "react-router-dom";
 import { loginAPI } from "../../api";
 import { useAuth } from "../../context";
-import { Shield, ArrowRight, User, Wrench, Crown, Loader2 } from "lucide-react";
 
 const Login = () => {
   const { saveAuth, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [showAgentCode, setShowAgentCode] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", agentSecurityCode: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showAgentCode, setShowAgentCode] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(location.state?.message || "");
@@ -21,120 +21,397 @@ const Login = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
+
+  const fillDemo = (email, password, isAgent = false) => {
+    setShowAgentCode(isAgent);
+    setForm({ email, password, agentSecurityCode: isAgent ? "AGENTCODE" : "" });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
-      const loginData = { email: form.email, password: form.password };
-      if (showAgentCode && form.agentSecurityCode) loginData.agentSecurityCode = form.agentSecurityCode;
+      const loginData = {
+        email: form.email,
+        password: form.password,
+      };
+
+      if (showAgentCode && form.agentSecurityCode) {
+        loginData.agentSecurityCode = form.agentSecurityCode;
+      }
+
       const res = await loginAPI(loginData);
       const userData = res.data.user;
       saveAuth(userData, res.data.token);
-      if (userData.role === "admin") navigate("/admin/dashboard");
-      else if (userData.role === "agent") navigate("/agent/dashboard");
-      else navigate("/dashboard");
+
+      if (userData.role === "admin") {
+        navigate("/admin/dashboard");
+      } else if (userData.role === "agent") {
+        navigate("/agent/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
-      if (!err.response) setError("Cannot connect to backend server. Please make sure backend is running on port 5000.");
-      else setError(err.response?.data?.message || "Login failed. Try again.");
+      if (!err.response) {
+        setError("Cannot connect to backend server. Please make sure the API is active.");
+      } else {
+        setError(err.response?.data?.message || "Login failed. Please check your credentials.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={s.page} className="auth-page-wrapper">
-      <div style={s.card} className="glass-panel animate-slide-up">
-        <div style={s.brandHeader}>
-          <div style={s.logoIcon}><Shield size={28} color="#38bdf8" strokeWidth={2} /></div>
-          <h2 style={s.title}>SCRS Enterprise</h2>
-          <p style={s.sub}>Smart Complaint Resolution & Service Desk Portal</p>
-        </div>
-
-        {error && <div style={s.error}>{error}</div>}
-        {success && <div style={s.success}>{success}</div>}
-
-        <form onSubmit={handleSubmit} style={s.form} autoComplete="off">
-          <div style={s.field}>
-            <label style={s.label}>Work Email Address</label>
-            <input type="email" name="email" value={form.email} onChange={handleChange}
-              placeholder="name@organization.com" autoComplete="off" required style={s.input} />
-          </div>
-
-          <div style={s.field}>
-            <label style={s.label}>Password</label>
-            <input type="password" name="password" value={form.password} onChange={handleChange}
-              placeholder="••••••••" autoComplete="new-password" required style={s.input} />
-          </div>
-
-          <div style={s.agentToggle}>
-            <button type="button" style={s.toggleBtn} onClick={() => { setShowAgentCode(v => !v); setForm(f => ({ ...f, agentSecurityCode: "" })); }}>
-              {showAgentCode ? "▲ Hide Agent Security Code" : "▼ Logging in as a Support Agent?"}
-            </button>
-          </div>
-
-          {showAgentCode && (
-            <div style={s.field} className="animate-fade-in">
-              <label style={s.label}>Agent Security Code</label>
-              <input type="text" name="agentSecurityCode" value={form.agentSecurityCode}
-                onChange={handleChange} placeholder="e.g., AGENTCODE" autoComplete="off" required style={s.input} />
+    <div style={styles.page} className="auth-page">
+      {/* LEFT BRAND PANEL */}
+      <div style={styles.leftPanel} className="auth-brand">
+        <div>
+          <div style={styles.brandHeader}>
+            <div style={styles.brandIcon}>
+              <i className="ti ti-shield-check" style={{ fontSize: "28px", color: "var(--brand)" }} />
             </div>
-          )}
+            <div>
+              <div style={styles.brandTitle}>SCRS</div>
+              <div style={styles.brandSubtitle}>Enterprise Support Desk</div>
+            </div>
+          </div>
 
-          <button type="submit" disabled={loading} style={s.btn}>
-            {loading ? <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Authenticating...</> : <>Sign In to Portal <ArrowRight size={16} /></>}
-          </button>
-        </form>
-
-        <div style={s.demoSection}>
-          <div style={s.demoDivider}><span>Quick Demo Logins</span></div>
-          <div style={s.demoBtnGroup}>
-            <button type="button" style={s.demoBtn} onClick={() => { setShowAgentCode(false); setForm({ email: "john@example.com", password: "userpassword123", agentSecurityCode: "" }); }}>
-              <User size={14} /> User
-            </button>
-            <button type="button" style={s.demoBtn} onClick={() => { setShowAgentCode(false); setForm({ email: "alex@example.com", password: "agentpassword123", agentSecurityCode: "" }); }}>
-              <Wrench size={14} /> Agent
-            </button>
-            <button type="button" style={s.demoBtn} onClick={() => { setShowAgentCode(false); setForm({ email: "admin@scrs.com", password: "adminpassword123", agentSecurityCode: "" }); }}>
-              <Crown size={14} /> Admin
-            </button>
+          <div style={styles.featureList}>
+            {[
+              { icon: "ti-ticket", text: "End-to-end complaint tracking" },
+              { icon: "ti-clock-check", text: "SLA-based resolution timelines" },
+              { icon: "ti-users", text: "Role-based team management" },
+              { icon: "ti-chart-bar", text: "Real-time analytics dashboard" },
+            ].map((f, i) => (
+              <div key={i} style={styles.featureRow}>
+                <i className={`ti ${f.icon}`} style={styles.featureIcon} />
+                <span style={styles.featureText}>{f.text}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        <p style={s.footer}>
-          Don't have an account? <Link to="/register" style={s.link}>Create new account</Link>
-        </p>
+        <div style={styles.quote}>
+          "Used by teams to manage, track, and resolve complaints with full accountability."
+        </div>
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* RIGHT FORM PANEL */}
+      <div style={styles.rightPanel} className="auth-form">
+        <div style={styles.card}>
+          <h1 style={styles.cardTitle}>Sign in to your account</h1>
+          <p style={styles.cardSub}>Welcome back. Enter your credentials below.</p>
+
+          {error && <div style={styles.alertError}>{error}</div>}
+          {success && <div style={styles.alertSuccess}>{success}</div>}
+
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.field}>
+              <label style={styles.label}>Work Email Address</label>
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="name@organisation.com"
+                required
+                style={{ height: "40px" }}
+              />
+            </div>
+
+            <div style={styles.field}>
+              <label style={styles.label}>Password</label>
+              <div style={styles.passwordWrap}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  required
+                  style={{ height: "40px", paddingRight: "36px" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={styles.eyeBtn}
+                  tabIndex="-1"
+                >
+                  <i className={showPassword ? "ti ti-eye-off" : "ti ti-eye"} />
+                </button>
+              </div>
+            </div>
+
+            {/* Agent security code toggle */}
+            <div style={{ marginBottom: "16px" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAgentCode(!showAgentCode);
+                  setForm((f) => ({ ...f, agentSecurityCode: "" }));
+                }}
+                style={styles.agentToggle}
+              >
+                {showAgentCode ? "▲ Hide Agent Security Code" : "▼ Logging in as a Support Agent?"}
+              </button>
+            </div>
+
+            {showAgentCode && (
+              <div style={styles.field}>
+                <label style={styles.label}>Agent Security Passkey</label>
+                <input
+                  type="text"
+                  name="agentSecurityCode"
+                  value={form.agentSecurityCode}
+                  onChange={handleChange}
+                  placeholder="e.g., AGENTCODE"
+                  style={{ height: "40px" }}
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary"
+              style={{ width: "100%", height: "42px", fontSize: "14px", marginTop: "8px" }}
+            >
+              {loading ? "Signing in..." : "Sign In →"}
+            </button>
+          </form>
+
+          <div style={styles.divider}>
+            <span style={styles.dividerText}>or quick demo</span>
+          </div>
+
+          <div style={styles.demoRow}>
+            <button
+              type="button"
+              className="btn-ghost"
+              style={styles.demoBtn}
+              onClick={() => fillDemo("john@example.com", "userpassword123")}
+            >
+              <i className="ti ti-user" /> User
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              style={styles.demoBtn}
+              onClick={() => fillDemo("alex@example.com", "agentpassword123", true)}
+            >
+              <i className="ti ti-headset" /> Agent
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              style={styles.demoBtn}
+              onClick={() => fillDemo("admin@scrs.com", "adminpassword123")}
+            >
+              <i className="ti ti-shield" /> Admin
+            </button>
+          </div>
+
+          <p style={styles.footerText}>
+            Don't have an account?{" "}
+            <Link to="/register" style={{ color: "var(--brand)", fontWeight: 500 }}>
+              Create one →
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
 
-const s = {
-  page: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-app)", padding: "1.5rem" },
-  card: { padding: "2.75rem 2.5rem", width: "100%", maxWidth: "460px", borderRadius: "20px", background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", boxShadow: "var(--shadow-lg)" },
-  brandHeader: { textAlign: "center", marginBottom: "1.75rem" },
-  logoIcon: { width: "56px", height: "56px", borderRadius: "16px", background: "rgba(56, 189, 248, 0.1)", border: "1px solid rgba(56, 189, 248, 0.25)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "0.75rem", boxShadow: "0 0 20px rgba(56, 189, 248, 0.15)" },
-  title: { margin: "0 0 0.25rem", color: "var(--text-primary)", fontSize: "1.65rem", fontWeight: "800", fontFamily: "var(--font-heading)" },
-  sub: { margin: 0, color: "var(--text-secondary)", fontSize: "0.88rem" },
-  form: { display: "flex", flexDirection: "column" },
-  field: { marginBottom: "1.25rem", textAlign: "left" },
-  label: { display: "block", marginBottom: "0.45rem", color: "var(--text-primary)", fontSize: "0.85rem", fontWeight: "600" },
-  input: { width: "100%", boxSizing: "border-box", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: "10px", padding: "0.75rem 1rem", color: "var(--text-primary)", fontSize: "0.92rem", outline: "none", fontFamily: "inherit", transition: "border-color 0.2s, box-shadow 0.2s" },
-  agentToggle: { marginBottom: "1.25rem" },
-  toggleBtn: { background: "transparent", border: "none", color: "var(--accent-blue)", fontSize: "0.82rem", cursor: "pointer", padding: 0, fontWeight: "600" },
-  btn: { width: "100%", background: "var(--grad-primary)", color: "#ffffff", border: "none", padding: "0.85rem 1.25rem", borderRadius: "10px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer", boxShadow: "0 4px 15px rgba(2, 132, 199, 0.25)", marginTop: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", transition: "all 0.2s ease", fontFamily: "var(--font-heading)" },
-  error: { background: "rgba(244, 63, 94, 0.12)", color: "#f43f5e", border: "1px solid rgba(244, 63, 94, 0.25)", padding: "0.75rem 1rem", borderRadius: "10px", marginBottom: "1.25rem", fontSize: "0.88rem", textAlign: "left" },
-  success: { background: "rgba(16, 185, 129, 0.12)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.25)", padding: "0.75rem 1rem", borderRadius: "10px", marginBottom: "1.25rem", fontSize: "0.88rem", textAlign: "left" },
-  demoSection: { marginTop: "1.5rem" },
-  demoDivider: { display: "flex", alignItems: "center", textAlign: "center", color: "var(--text-muted)", fontSize: "0.78rem", fontWeight: "600", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" },
-  demoBtnGroup: { display: 
-"grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem" },
-  demoBtn: { background: "rgba(255, 255, 255, 0.05)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "0.55rem 0.25rem", color: "var(--text-primary)", fontSize: "0.8rem", fontWeight: "600", cursor: "pointer", transition: "all 0.2s ease", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" },
-  footer: { textAlign: "center", marginTop: "1.75rem", color: "var(--text-secondary)", fontSize: "0.88rem" },
-  link: { color: "var(--accent-blue)", fontWeight: "700", textDecoration: "none" },
+const styles = {
+  page: {
+    display: "flex",
+    minHeight: "100vh",
+    width: "100vw",
+    background: "var(--bg-base)",
+  },
+  leftPanel: {
+    width: "38%",
+    background: "var(--bg-surface)",
+    borderRight: "1px solid var(--border)",
+    padding: "48px 40px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    boxSizing: "border-box",
+  },
+  brandHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "48px",
+  },
+  brandIcon: {
+    width: "42px",
+    height: "42px",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--brand-subtle)",
+    border: "1px solid var(--brand-muted)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brandTitle: {
+    fontSize: "22px",
+    fontWeight: "600",
+    color: "var(--text-primary)",
+    letterSpacing: "-0.02em",
+  },
+  brandSubtitle: {
+    fontSize: "13px",
+    color: "var(--text-secondary)",
+  },
+  featureList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px",
+  },
+  featureRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  },
+  featureIcon: {
+    fontSize: "18px",
+    color: "var(--brand)",
+    width: "20px",
+  },
+  featureText: {
+    fontSize: "13px",
+    color: "var(--text-secondary)",
+  },
+  quote: {
+    fontSize: "12px",
+    color: "var(--text-muted)",
+    fontStyle: "italic",
+    lineHeight: "1.6",
+  },
+  rightPanel: {
+    width: "62%",
+    background: "var(--bg-base)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "24px",
+    boxSizing: "border-box",
+  },
+  card: {
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border-strong)",
+    borderRadius: "var(--radius-xl)",
+    padding: "36px 32px",
+    width: "100%",
+    maxWidth: "420px",
+    boxSizing: "border-box",
+  },
+  cardTitle: {
+    fontSize: "18px",
+    fontWeight: "500",
+    color: "var(--text-primary)",
+    margin: "0 0 4px",
+  },
+  cardSub: {
+    fontSize: "13px",
+    color: "var(--text-secondary)",
+    margin: "0 0 24px",
+  },
+  alertError: {
+    background: "var(--urgent-bg)",
+    color: "var(--urgent)",
+    border: "1px solid rgba(224, 36, 36, 0.3)",
+    padding: "10px 12px",
+    borderRadius: "var(--radius-md)",
+    fontSize: "12px",
+    marginBottom: "16px",
+  },
+  alertSuccess: {
+    background: "var(--resolved-bg)",
+    color: "var(--resolved)",
+    border: "1px solid rgba(14, 159, 110, 0.3)",
+    padding: "10px 12px",
+    borderRadius: "var(--radius-md)",
+    fontSize: "12px",
+    marginBottom: "16px",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+  },
+  field: {
+    marginBottom: "16px",
+  },
+  label: {
+    display: "block",
+    fontSize: "12px",
+    fontWeight: "500",
+    color: "var(--text-secondary)",
+    marginBottom: "6px",
+  },
+  passwordWrap: {
+    position: "relative",
+  },
+  eyeBtn: {
+    position: "absolute",
+    right: "10px",
+    top: "50%",
+    transform: "translateY(-50%)",
+    background: "transparent",
+    border: "none",
+    color: "var(--text-muted)",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+  },
+  agentToggle: {
+    background: "transparent",
+    border: "none",
+    color: "var(--brand)",
+    fontSize: "12px",
+    fontWeight: "500",
+    cursor: "pointer",
+    padding: 0,
+  },
+  divider: {
+    textAlign: "center",
+    margin: "20px 0 16px",
+    position: "relative",
+    borderBottom: "1px solid var(--border)",
+  },
+  dividerText: {
+    position: "relative",
+    top: "8px",
+    background: "var(--bg-elevated)",
+    padding: "0 8px",
+    fontSize: "11px",
+    color: "var(--text-muted)",
+  },
+  demoRow: {
+    display: "flex",
+    gap: "8px",
+    marginBottom: "20px",
+  },
+  demoBtn: {
+    flex: 1,
+    height: "32px",
+    fontSize: "12px",
+    padding: "0 4px",
+  },
+  footerText: {
+    textAlign: "center",
+    fontSize: "13px",
+    color: "var(--text-secondary)",
+    margin: 0,
+  },
 };
 
 export default Login;

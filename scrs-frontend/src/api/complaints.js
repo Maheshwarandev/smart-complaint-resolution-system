@@ -6,17 +6,11 @@ export const createComplaintAPI = (data) =>
 export const getAllComplaintsAPI = () =>
   axiosInstance.get("/complaints");
 
-export const getComplaintByIdAPI = (id) =>
-  axiosInstance.get(`/complaints/${id}`);
-
 export const updateComplaintAPI = (id, data) =>
   axiosInstance.put(`/complaints/${id}`, data);
 
 export const deleteComplaintAPI = (id) =>
   axiosInstance.delete(`/complaints/${id}`);
-
-export const getComplaintStatsAPI = () =>
-  axiosInstance.get("/complaints/stats");
 
 export const addCommentAPI = (id, text) =>
   axiosInstance.post(`/complaints/${id}/comments`, { text });

@@ -3,7 +3,7 @@ const User = require('../models/User');
 const { AppError } = require('../utils/errorHandler');
 const { validateEmail, validatePassword, validateName } = require('../utils/validators');
 const { ROLES } = require('../utils/constants');
-const { uploadToCloudinary } = require('../utils/uploadHelper');
+const { uploadToCloudinary } = require('../utils/cloudinary');
 
 /** Generate a JWT token for a given user ID */
 const generateToken = (id) => {

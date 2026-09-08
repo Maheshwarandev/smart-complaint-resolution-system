@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Star } from "lucide-react";
+import React, { useState } from "react";
 
 const StarRating = ({ rating, onRate, readonly = false }) => {
   const [hoverScore, setHoverScore] = useState(0);
@@ -33,26 +32,36 @@ const StarRating = ({ rating, onRate, readonly = false }) => {
     if (!starCount) return null;
 
     return (
-      <div style={s.readonlyContainer}>
-        <div style={s.starsRow}>
+      <div style={styles.readonlyContainer}>
+        <div style={styles.starsRow}>
           {[1, 2, 3, 4, 5].map((star) => (
-            <Star key={star} size={16} fill={star <= starCount ? "#f59e0b" : "none"} color={star <= starCount ? "#f59e0b" : "#475569"} />
+            <i
+              key={star}
+              className={star <= starCount ? "ti ti-star-filled" : "ti ti-star"}
+              style={{
+                color: star <= starCount ? "#E3A008" : "var(--text-muted)",
+                fontSize: "15px",
+              }}
+            />
           ))}
-          <span style={s.scoreBadge}>{starCount}/5</span>
+          <span style={styles.scoreBadge}>{starCount}/5</span>
         </div>
         {rating?.feedback && (
-          <p style={s.feedbackText}>"{rating.feedback}"</p>
+          <p style={styles.feedbackText}>"{rating.feedback}"</p>
         )}
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} style={s.interactiveCard} className="glass-panel">
-      <h4 style={s.cardTitle}><Star size={16} style={{verticalAlign:"middle",marginRight:"0.3rem"}} /> Rate Resolution Quality</h4>
-      <p style={s.cardSub}>How satisfied are you with the resolution of this complaint?</p>
+    <form onSubmit={handleSubmit} style={styles.interactiveCard}>
+      <div style={styles.cardTitle}>
+        <i className="ti ti-star" style={{ color: "var(--open)", fontSize: "16px" }} />
+        <span>Rate Resolution Quality</span>
+      </div>
+      <p style={styles.cardSub}>How satisfied are you with the outcome of this ticket?</p>
 
-      <div style={s.starsInteractiveRow}>
+      <div style={styles.starsInteractiveRow}>
         {[1, 2, 3, 4, 5].map((star) => {
           const active = star <= (hoverScore || score);
           return (
@@ -62,108 +71,106 @@ const StarRating = ({ rating, onRate, readonly = false }) => {
               onClick={() => handleStarClick(star)}
               onMouseEnter={() => setHoverScore(star)}
               onMouseLeave={() => setHoverScore(0)}
-              style={{
-                background: "transparent",
-                border: "none",
-                fontSize: "1.75rem",
-                cursor: "pointer",
-                color: active ? "#f59e0b" : "#64748b",
-                transition: "transform 0.15s ease",
-                transform: active ? "scale(1.2)" : "scale(1)"
-              }}
+              style={styles.starBtn}
             >
-              ★
+              <i
+                className={active ? "ti ti-star-filled" : "ti ti-star"}
+                style={{
+                  color: active ? "#E3A008" : "var(--text-muted)",
+                  fontSize: "22px",
+                }}
+              />
             </button>
           );
         })}
+        {score > 0 && <span style={styles.activeScoreLabel}>{score} / 5</span>}
       </div>
 
       <textarea
-        placeholder="Add your feedback (optional)..."
+        placeholder="Optional feedback about your resolution experience..."
         value={feedback}
         onChange={(e) => setFeedback(e.target.value)}
-        style={s.textarea}
         rows={2}
+        style={{ marginTop: "10px", fontSize: "12px" }}
       />
 
-      <button type="submit" disabled={submitting || score === 0} style={s.submitBtn}>
-        {submitting ? "Submitting..." : "Submit Rating"}
-      </button>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
+        <button
+          type="submit"
+          disabled={submitting || !score}
+          className="btn-primary"
+          style={{ height: "32px", fontSize: "12px", padding: "0 14px" }}
+        >
+          {submitting ? "Submitting..." : "Submit Rating"}
+        </button>
+      </div>
     </form>
   );
 };
 
-const s = {
+const styles = {
   readonlyContainer: {
-    background: "rgba(245, 158, 11, 0.08)",
-    border: "1px solid rgba(245, 158, 11, 0.2)",
-    borderRadius: "10px",
-    padding: "0.6rem 0.9rem",
-    marginTop: "0.5rem"
+    padding: "8px 12px",
+    background: "var(--bg-hover)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
   },
   starsRow: {
     display: "flex",
     alignItems: "center",
-    gap: "0.25rem"
+    gap: "4px",
   },
   scoreBadge: {
-    color: "#f59e0b",
-    fontWeight: "700",
-    fontSize: "0.85rem",
-    marginLeft: "0.5rem"
+    marginLeft: "8px",
+    fontSize: "12px",
+    fontWeight: "600",
+    color: "#E3A008",
   },
   feedbackText: {
-    margin: "0.35rem 0 0",
+    margin: "6px 0 0",
+    fontSize: "12px",
     color: "var(--text-secondary)",
-    fontSize: "0.85rem",
-    fontStyle: "italic"
+    fontStyle: "italic",
   },
   interactiveCard: {
-    padding: "1.25rem",
-    borderRadius: "12px",
-    marginTop: "1rem",
-    border: "1px solid rgba(245, 158, 11, 0.25)",
-    background: "rgba(245, 158, 11, 0.04)"
+    background: "var(--bg-hover)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
+    padding: "14px 16px",
   },
   cardTitle: {
-    margin: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "13px",
+    fontWeight: "600",
     color: "var(--text-primary)",
-    fontSize: "1.05rem",
-    fontWeight: "700"
   },
   cardSub: {
-    margin: "0.25rem 0 0.75rem",
+    fontSize: "12px",
     color: "var(--text-secondary)",
-    fontSize: "0.85rem"
+    margin: "2px 0 10px",
   },
   starsInteractiveRow: {
     display: "flex",
-    gap: "0.4rem",
-    marginBottom: "0.75rem"
+    alignItems: "center",
+    gap: "6px",
   },
-  textarea: {
-    width: "100%",
-    boxSizing: "border-box",
-    background: "rgba(15, 23, 42, 0.6)",
-    border: "1px solid var(--border-subtle)",
-    borderRadius: "8px",
-    padding: "0.6rem 0.8rem",
-    color: "var(--text-primary)",
-    fontSize: "0.88rem",
-    fontFamily: "inherit",
-    resize: "none",
-    marginBottom: "0.75rem"
-  },
-  submitBtn: {
-    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-    color: "#ffffff",
+  starBtn: {
+    background: "transparent",
     border: "none",
-    padding: "0.5rem 1.25rem",
-    borderRadius: "8px",
-    fontWeight: "700",
-    fontSize: "0.85rem",
-    cursor: "pointer"
-  }
+    cursor: "pointer",
+    padding: "2px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activeScoreLabel: {
+    marginLeft: "8px",
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "#E3A008",
+  },
 };
 
 export default StarRating;

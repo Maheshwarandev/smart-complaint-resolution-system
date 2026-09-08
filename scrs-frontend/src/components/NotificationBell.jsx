@@ -4,13 +4,12 @@ import {
   getNotificationsAPI,
   markNotificationReadAPI,
   markAllNotificationsReadAPI,
-} from "../api/notifications";
+} from "../api";
 
 const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
@@ -22,17 +21,16 @@ const NotificationBell = () => {
         setUnreadCount(res.data.unreadCount || 0);
       }
     } catch {
-      // Ignore background poll errors
+      // Ignore background fetch error
     }
   };
 
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30000); // 30-sec polling
+    const interval = setInterval(loadNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Close on outside click
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -76,15 +74,15 @@ const NotificationBell = () => {
   const getTypeIcon = (type) => {
     switch (type) {
       case "comment":
-        return "💬";
+        return <i className="ti ti-message-circle" style={{ color: "#7C3AED" }} />;
       case "status":
-        return "📌";
+        return <i className="ti ti-checkup-list" style={{ color: "var(--open)" }} />;
       case "assignment":
-        return "⚡";
+        return <i className="ti ti-user-check" style={{ color: "var(--brand)" }} />;
       case "rating":
-        return "⭐";
+        return <i className="ti ti-star" style={{ color: "var(--open)" }} />;
       default:
-        return "🛡️";
+        return <i className="ti ti-info-circle" style={{ color: "var(--brand)" }} />;
     }
   };
 
@@ -107,7 +105,7 @@ const NotificationBell = () => {
         onClick={() => setIsOpen((prev) => !prev)}
         title="Notifications"
       >
-        <span style={styles.bellIcon}>🔔</span>
+        <i className="ti ti-bell" style={{ fontSize: "16px", color: "var(--text-secondary)" }} />
         {unreadCount > 0 && (
           <span style={styles.badge}>
             {unreadCount > 9 ? "9+" : unreadCount}
@@ -116,10 +114,10 @@ const NotificationBell = () => {
       </button>
 
       {isOpen && (
-        <div style={styles.dropdown} className="glass-panel animate-slide-up">
-          <div style={styles.dropdownHeader}>
-            <div style={styles.headerLeft}>
-              <strong style={styles.headerTitle}>Notifications</strong>
+        <div style={styles.dropdown}>
+          <div style={styles.header}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={styles.title}>Notifications</span>
               {unreadCount > 0 && (
                 <span style={styles.unreadPill}>{unreadCount} new</span>
               )}
@@ -137,9 +135,9 @@ const NotificationBell = () => {
 
           <div style={styles.list}>
             {notifications.length === 0 ? (
-              <div style={styles.emptyState}>
-                <span style={{ fontSize: "2rem", display: "block", marginBottom: "0.5rem" }}>📭</span>
-                No notifications yet
+              <div style={styles.empty}>
+                <i className="ti ti-bell-off" style={{ fontSize: "28px", color: "var(--text-muted)", marginBottom: "6px" }} />
+                <div>No notifications</div>
               </div>
             ) : (
               notifications.map((item) => (
@@ -148,14 +146,13 @@ const NotificationBell = () => {
                   onClick={() => handleNotificationClick(item)}
                   style={{
                     ...styles.item,
-                    background: item.read ? "transparent" : "rgba(56, 189, 248, 0.08)",
+                    background: item.read ? "transparent" : "var(--brand-subtle)",
                   }}
-                  className="hover-lift"
                 >
                   <div style={styles.itemIcon}>{getTypeIcon(item.type)}</div>
                   <div style={styles.itemContent}>
                     <div style={styles.itemTitleRow}>
-                      <span style={{ ...styles.itemTitle, fontWeight: item.read ? "600" : "800" }}>
+                      <span style={{ ...styles.itemTitle, fontWeight: item.read ? 400 : 600 }}>
                         {item.title}
                       </span>
                       <span style={styles.itemTime}>{formatTime(item.createdAt)}</span>
@@ -180,106 +177,102 @@ const styles = {
   },
   bellBtn: {
     position: "relative",
-    background: "rgba(255, 255, 255, 0.05)",
-    border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
-    borderRadius: "50%",
-    width: "38px",
-    height: "38px",
+    width: "34px",
+    height: "34px",
+    borderRadius: "var(--radius-md)",
+    border: "1px solid var(--border)",
+    background: "transparent",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    transition: "all 0.2s ease",
-  },
-  bellIcon: {
-    fontSize: "1.1rem",
+    transition: "background 150ms ease",
   },
   badge: {
     position: "absolute",
-    top: "-3px",
-    right: "-3px",
-    background: "linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)",
-    color: "#ffffff",
-    fontSize: "0.68rem",
-    fontWeight: "800",
+    top: "-4px",
+    right: "-4px",
+    background: "var(--brand)",
+    color: "#FFFFFF",
+    fontSize: "10px",
+    fontWeight: "600",
     borderRadius: "10px",
-    padding: "0.15rem 0.4rem",
+    padding: "1px 5px",
     minWidth: "16px",
-    textAlign: "center",
-    boxShadow: "0 0 10px rgba(244, 63, 94, 0.5)",
+    height: "16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxSizing: "border-box",
   },
   dropdown: {
     position: "absolute",
     right: 0,
-    top: "calc(100% + 12px)",
-    width: "360px",
-    maxHeight: "440px",
-    background: "var(--bg-surface-solid, #0d1320)",
-    border: "1px solid var(--border-glow, rgba(56, 189, 248, 0.25))",
-    borderRadius: "16px",
-    boxShadow: "var(--shadow-lg, 0 20px 50px rgba(0, 0, 0, 0.65))",
+    top: "calc(100% + 8px)",
+    width: "340px",
+    maxHeight: "420px",
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border-strong)",
+    borderRadius: "var(--radius-lg)",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
     zIndex: 1000,
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
   },
-  dropdownHeader: {
-    padding: "0.9rem 1.2rem",
-    borderBottom: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
+  header: {
+    padding: "12px 16px",
+    borderBottom: "1px solid var(--border)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    background: "rgba(255, 255, 255, 0.02)",
   },
-  headerLeft: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-  },
-  headerTitle: {
-    color: "var(--text-primary, #f8fafc)",
-    fontSize: "0.95rem",
-    fontFamily: "var(--font-heading)",
+  title: {
+    fontSize: "13px",
+    fontWeight: "500",
+    color: "var(--text-primary)",
   },
   unreadPill: {
-    background: "rgba(56, 189, 248, 0.15)",
-    color: "var(--accent-blue, #38bdf8)",
-    padding: "0.15rem 0.45rem",
-    borderRadius: "10px",
-    fontSize: "0.7rem",
-    fontWeight: "700",
+    background: "var(--brand-subtle)",
+    color: "var(--brand)",
+    padding: "1px 6px",
+    borderRadius: "var(--radius-sm)",
+    fontSize: "10px",
+    fontWeight: "500",
   },
   markAllBtn: {
     background: "transparent",
     border: "none",
-    color: "var(--accent-blue, #38bdf8)",
-    fontSize: "0.75rem",
-    fontWeight: "700",
+    color: "var(--brand)",
+    fontSize: "12px",
     cursor: "pointer",
-    padding: "0.2rem 0.4rem",
+    padding: 0,
   },
   list: {
     overflowY: "auto",
-    maxHeight: "360px",
+    maxHeight: "340px",
   },
-  emptyState: {
-    padding: "2.5rem 1.5rem",
+  empty: {
+    padding: "36px 16px",
     textAlign: "center",
-    color: "var(--text-secondary, #94a3b8)",
-    fontSize: "0.88rem",
+    color: "var(--text-muted)",
+    fontSize: "13px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
   },
   item: {
     display: "flex",
-    gap: "0.75rem",
-    padding: "0.85rem 1.15rem",
-    borderBottom: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.04))",
+    gap: "10px",
+    padding: "10px 14px",
+    borderBottom: "1px solid var(--border)",
     cursor: "pointer",
-    transition: "background 0.15s ease",
+    transition: "background 120ms ease",
     alignItems: "flex-start",
   },
   itemIcon: {
-    fontSize: "1.1rem",
-    marginTop: "2px",
+    fontSize: "16px",
+    marginTop: "1px",
   },
   itemContent: {
     flex: 1,
@@ -289,32 +282,32 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "0.2rem",
+    marginBottom: "2px",
   },
   itemTitle: {
-    color: "var(--text-primary, #f8fafc)",
-    fontSize: "0.85rem",
+    color: "var(--text-primary)",
+    fontSize: "12px",
   },
   itemTime: {
-    color: "var(--text-muted, #64748b)",
-    fontSize: "0.72rem",
+    color: "var(--text-muted)",
+    fontSize: "11px",
+    fontFamily: "var(--font-mono)",
   },
   itemMsg: {
     margin: 0,
-    color: "var(--text-secondary, #94a3b8)",
-    fontSize: "0.78rem",
+    color: "var(--text-secondary)",
+    fontSize: "12px",
     lineHeight: 1.4,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
   unreadDot: {
-    width: "8px",
-    height: "8px",
+    width: "6px",
+    height: "6px",
     borderRadius: "50%",
-    background: "#38bdf8",
+    background: "var(--brand)",
     marginTop: "6px",
-    boxShadow: "0 0 8px #38bdf8",
   },
 };
 

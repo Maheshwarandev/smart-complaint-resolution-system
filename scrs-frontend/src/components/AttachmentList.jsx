@@ -1,25 +1,34 @@
-import { Paperclip, ExternalLink } from "lucide-react";
+import React from "react";
 
 const AttachmentList = ({ attachments }) => {
   if (!attachments || attachments.length === 0) return null;
 
-  const s = styles;
   return (
-    <div style={s.section}>
-      <h4 style={s.sectionTitle}><Paperclip size={16} style={{verticalAlign:"middle",marginRight:"0.4rem"}} /> Attachments</h4>
-      <div style={s.attachmentList}>
+    <div style={styles.section}>
+      <div style={styles.sectionTitle}>
+        <i className="ti ti-paperclip" style={{ color: "var(--brand)", fontSize: "16px" }} />
+        <span>Attachments ({attachments.length})</span>
+      </div>
+      <div style={styles.attachmentList}>
         {attachments.map((att, i) => {
-          const isFullUrl = att.filepath && (att.filepath.startsWith("http://") || att.filepath.startsWith("https://"));
-          const fileLink = isFullUrl ? att.filepath : `${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}${att.filepath}`;
+          const isFullUrl =
+            att.filepath &&
+            (att.filepath.startsWith("http://") || att.filepath.startsWith("https://"));
+          const fileLink = isFullUrl
+            ? att.filepath
+            : `${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}${att.filepath}`;
+
           return (
             <a
               key={i}
               href={fileLink}
               target="_blank"
               rel="noreferrer"
-              style={s.attachmentBtn}
+              style={styles.attachmentBtn}
             >
-              {att.filename}
+              <i className="ti ti-file" style={{ fontSize: "14px" }} />
+              <span>{att.filename}</span>
+              <i className="ti ti-external-link" style={{ fontSize: "12px", color: "var(--text-muted)" }} />
             </a>
           );
         })}
@@ -29,10 +38,39 @@ const AttachmentList = ({ attachments }) => {
 };
 
 const styles = {
-  section: { marginTop: "1.5rem", marginBottom: "1.5rem" },
-  sectionTitle: { margin: "0 0 1rem", color: "var(--text-primary)", fontSize: "1rem", fontWeight: "700" },
-  attachmentList: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" },
-  attachmentBtn: { background: "rgba(56, 189, 248, 0.1)", color: "var(--accent-blue)", padding: "0.4rem 0.8rem", borderRadius: "6px", textDecoration: "none", fontSize: "0.85rem", fontWeight: "500", border: "1px solid rgba(56, 189, 248, 0.2)", transition: "all 0.2s" }
+  section: {
+    marginTop: "14px",
+    paddingTop: "12px",
+    borderTop: "1px solid var(--border)",
+  },
+  sectionTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "var(--text-primary)",
+    marginBottom: "8px",
+  },
+  attachmentList: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+  },
+  attachmentBtn: {
+    background: "var(--bg-hover)",
+    color: "var(--brand)",
+    padding: "6px 10px",
+    borderRadius: "var(--radius-md)",
+    textDecoration: "none",
+    fontSize: "12px",
+    fontWeight: "500",
+    border: "1px solid var(--border)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    transition: "border-color 150ms ease",
+  },
 };
 
 export default AttachmentList;

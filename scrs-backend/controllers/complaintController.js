@@ -10,7 +10,7 @@ const {
   validatePriority,
 } = require('../utils/validators');
 const { ROLES, COMPLAINT_STATUS, SLA_HOURS_BY_PRIORITY } = require('../utils/constants');
-const { uploadToCloudinary } = require('../utils/uploadHelper');
+const { uploadToCloudinary } = require('../utils/cloudinary');
 const {
   sendTicketCreatedEmail,
   sendTicketAssignedEmail,

@@ -1,33 +1,48 @@
-import { Clock } from "lucide-react";
+import React from "react";
 
 const ActivityTimeline = ({ history }) => {
   if (!history || history.length === 0) return null;
 
-  const s = styles;
   return (
-    <div style={s.section}>
-      <h4 style={s.sectionTitle}><Clock size={16} style={{verticalAlign:"middle",marginRight:"0.4rem"}} /> Activity Timeline</h4>
-      <div style={s.timeline}>
+    <div style={styles.section}>
+      <div style={styles.sectionTitle}>
+        <i className="ti ti-history" style={{ color: "var(--brand)", fontSize: "16px" }} />
+        <span>Activity Audit Timeline</span>
+      </div>
+
+      <div style={styles.timeline}>
         {history.map((h, i) => (
-          <div key={i} style={s.timelineItem}>
-            <div style={s.timelineDot}></div>
-            <div style={s.timelineContent}>
-              <div style={s.timelineTime}>
-                {new Date(h.timestamp).toLocaleString()}
+          <div key={i} style={styles.timelineItem}>
+            <div style={styles.timelineDot} />
+            <div style={styles.timelineContent}>
+              <div style={styles.timelineHeader}>
+                <span style={styles.timelineAction}>{h.action}</span>
+                <span style={styles.timelineTime}>
+                  {new Date(h.timestamp).toLocaleString([], {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
               </div>
-              <strong style={s.timelineAction}>{h.action}</strong>
-              
+
               {h.prevValue && h.newValue && (
-                <div style={s.timelineChanges}>
-                  {h.prevValue} → {h.newValue}
+                <div style={styles.timelineChanges}>
+                  <span>{h.prevValue}</span>
+                  <i className="ti ti-arrow-right" style={{ fontSize: "11px", color: "var(--text-muted)" }} />
+                  <strong>{h.newValue}</strong>
                 </div>
               )}
+
               {!h.prevValue && h.newValue && (
-                <div style={s.timelineChanges}>{h.newValue}</div>
+                <div style={styles.timelineChanges}>
+                  <strong>{h.newValue}</strong>
+                </div>
               )}
-              
-              <div style={s.timelineUser}>
-                By: {h.performedBy} ({h.role})
+
+              <div style={styles.timelineUser}>
+                By {h.performedBy} ({h.role})
               </div>
             </div>
           </div>
@@ -38,16 +53,79 @@ const ActivityTimeline = ({ history }) => {
 };
 
 const styles = {
-  section: { marginTop: "1.5rem", marginBottom: "1.5rem" },
-  sectionTitle: { margin: "0 0 1rem", color: "var(--text-primary)", fontSize: "1rem", fontWeight: "700" },
-  timeline: { display: "flex", flexDirection: "column", gap: "1rem", borderLeft: "2px solid var(--border-subtle)", paddingLeft: "1.2rem", marginLeft: "0.5rem", marginTop: "0.5rem" },
-  timelineItem: { position: "relative" },
-  timelineDot: { position: "absolute", left: "-1.55rem", top: "0.3rem", width: "10px", height: "10px", borderRadius: "50%", background: "var(--accent-blue)", border: "2px solid var(--bg-app)" },
-  timelineContent: { background: "rgba(255,255,255,0.01)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-subtle)" },
-  timelineTime: { fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.2rem" },
-  timelineAction: { display: "block", color: "var(--text-primary)", fontSize: "0.9rem", marginBottom: "0.25rem" },
-  timelineChanges: { fontSize: "0.85rem", color: "var(--text-secondary)", background: "rgba(255,255,255,0.015)", padding: "0.4rem", borderRadius: "4px", border: "1px solid var(--border-subtle)", marginBottom: "0.4rem" },
-  timelineUser: { fontSize: "0.8rem", color: "var(--text-muted)", fontStyle: "italic" }
+  section: {
+    marginTop: "16px",
+    paddingTop: "14px",
+    borderTop: "1px solid var(--border)",
+  },
+  sectionTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "var(--text-primary)",
+    marginBottom: "12px",
+  },
+  timeline: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    borderLeft: "2px solid var(--border)",
+    paddingLeft: "16px",
+    marginLeft: "8px",
+  },
+  timelineItem: {
+    position: "relative",
+  },
+  timelineDot: {
+    position: "absolute",
+    left: "-22px",
+    top: "4px",
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    background: "var(--brand)",
+    border: "2px solid var(--bg-surface)",
+  },
+  timelineContent: {
+    background: "var(--bg-hover)",
+    padding: "10px 12px",
+    borderRadius: "var(--radius-md)",
+    border: "1px solid var(--border)",
+  },
+  timelineHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "4px",
+  },
+  timelineAction: {
+    color: "var(--text-primary)",
+    fontSize: "12px",
+    fontWeight: "600",
+  },
+  timelineTime: {
+    fontSize: "11px",
+    color: "var(--text-muted)",
+    fontFamily: "var(--font-mono)",
+  },
+  timelineChanges: {
+    fontSize: "12px",
+    color: "var(--text-primary)",
+    background: "var(--bg-base)",
+    padding: "4px 8px",
+    borderRadius: "var(--radius-sm)",
+    border: "1px solid var(--border)",
+    marginBottom: "4px",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  timelineUser: {
+    fontSize: "11px",
+    color: "var(--text-muted)",
+  },
 };
 
 export default ActivityTimeline;

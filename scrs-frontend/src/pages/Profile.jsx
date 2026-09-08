@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "../context";
 import { updateProfileAPI } from "../api";
 
@@ -39,7 +39,7 @@ const Profile = () => {
 
       const res = await updateProfileAPI(formData);
       const updatedUser = res.data.data;
-      
+
       const token = localStorage.getItem("token");
       saveAuth(updatedUser, token);
 
@@ -55,308 +55,260 @@ const Profile = () => {
   };
 
   return (
-    <div style={s.page} className="animate-fade-in">
-      <div style={s.header}>
-        <h1 style={s.title}>👤 User Profile</h1>
-        <p style={s.subtitle}>Manage your account details and credentials</p>
+    <div style={styles.container}>
+      {toast && (
+        <div style={styles.toast}>
+          <i className="ti ti-check" style={{ color: "var(--resolved)" }} />
+          <span>{toast}</span>
+        </div>
+      )}
+
+      <div style={styles.header}>
+        <h1 style={styles.title}>Account Profile</h1>
+        <p style={styles.subtitle}>Manage your account information and credentials</p>
       </div>
 
-      {toast && <div style={s.toast}>{toast}</div>}
-      {error && <div style={s.error}>{error}</div>}
+      {error && <div style={styles.alertError}>{error}</div>}
 
-      <div style={s.card} className="glass-panel">
-        <div style={s.profileHeader}>
-          <div style={s.avatarContainer}>
-            {previewUrl ? (
-              <img src={previewUrl} alt={name} style={s.avatarImg} />
-            ) : (
-              <div style={s.avatarFallback}>{user?.name?.[0]?.toUpperCase() || "U"}</div>
-            )}
-            {isEditing && (
-              <label style={s.uploadLabel}>
-                📷
-                <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: "none" }} />
-              </label>
-            )}
+      <div className="panel" style={{ padding: "28px" }}>
+        {/* Top Profile Summary */}
+        <div style={styles.profileTop}>
+          {previewUrl ? (
+            <img src={previewUrl} alt={name} style={styles.avatarImg} />
+          ) : (
+            <div style={styles.avatarCircle}>
+              {user?.name?.[0]?.toUpperCase() || "U"}
+            </div>
+          )}
+
+          <div style={{ flex: 1 }}>
+            <h2 style={styles.userName}>{user?.name}</h2>
+            <div style={styles.userEmail}>{user?.email}</div>
+            <div style={{ marginTop: "6px" }}>
+              <span className="badge-status badge-progress" style={{ textTransform: "uppercase" }}>
+                <span className="badge-dot" />
+                <span>{user?.role}</span>
+              </span>
+            </div>
           </div>
 
-          <div style={s.profileMeta}>
-            <h2 style={s.name}>{user?.name}</h2>
-            <div style={s.badge}>{user?.role}</div>
-          </div>
-
-          <button
-            onClick={() => {
-              setIsEditing(!isEditing);
-              setError("");
-            }}
-            style={s.editToggleBtn}
-          >
-            {isEditing ? "Cancel" : "✏️ Edit Profile"}
-          </button>
+          {!isEditing && (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="btn-ghost"
+              style={{ height: "36px" }}
+            >
+              <i className="ti ti-edit" /> Edit Profile
+            </button>
+          )}
         </div>
 
-        {!isEditing ? (
-          <div style={s.infoGrid} className="profile-info-grid">
-            <div style={s.infoItem}>
-              <span style={s.label}>Full Name</span>
-              <span style={s.value}>{user?.name}</span>
+        {/* Edit Form or Read-only Display */}
+        {isEditing ? (
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.field}>
+              <label style={styles.label}>Profile Picture (Cloudinary)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{ padding: "6px 10px", height: "38px" }}
+              />
             </div>
-            <div style={s.infoItem}>
-              <span style={s.label}>Email Address</span>
-              <span style={s.value}>{user?.email}</span>
-            </div>
-            <div style={s.infoItem}>
-              <span style={s.label}>Account Role</span>
-              <span style={{ ...s.value, textTransform: "capitalize" }}>{user?.role}</span>
-            </div>
-            <div style={s.infoItem}>
-              <span style={s.label}>System Access Status</span>
-              <span style={s.statusValue}>Active</span>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} style={s.editForm}>
-            <div style={s.inputGroup}>
-              <label style={s.label}>Full Name</label>
+
+            <div style={styles.field}>
+              <label style={styles.label}>Full Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                style={s.input}
+                style={{ height: "40px" }}
               />
             </div>
 
-            <div style={s.inputGroup}>
-              <label style={s.label}>New Password (leave blank to keep current)</label>
+            <div style={styles.field}>
+              <label style={styles.label}>New Password (leave blank to keep current)</label>
               <input
                 type="password"
-                placeholder="Min 6 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={s.input}
+                placeholder="••••••••"
+                minLength={6}
+                style={{ height: "40px" }}
               />
             </div>
 
-            <div style={s.inputGroup}>
-              <label style={s.label}>Profile Picture (Upload to Cloudinary)</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                style={s.fileInput}
-              />
-            </div>
-
-            <div style={s.btnRow}>
-              <button type="submit" disabled={loading} style={s.saveBtn}>
-                {loading ? "Saving..." : "Save Changes"}
+            <div style={styles.actionRow}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(false);
+                  setName(user?.name || "");
+                  setPassword("");
+                  setPreviewUrl(user?.avatar || "");
+                }}
+                className="btn-ghost"
+                style={{ height: "38px" }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary"
+                style={{ height: "38px" }}
+              >
+                {loading ? "Saving Changes..." : "Save Changes"}
               </button>
             </div>
           </form>
+        ) : (
+          <div style={styles.readOnlyList}>
+            <div style={styles.row}>
+              <span style={styles.rowLabel}>Email Address</span>
+              <span style={styles.rowVal}>{user?.email}</span>
+            </div>
+            <div style={styles.row}>
+              <span style={styles.rowLabel}>Account Role</span>
+              <span style={{ ...styles.rowVal, textTransform: "capitalize" }}>{user?.role}</span>
+            </div>
+            <div style={{ ...styles.row, borderBottom: "none" }}>
+              <span style={styles.rowLabel}>Member Since</span>
+              <span style={styles.rowVal}>
+                {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : "Recent"}
+              </span>
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
 };
 
-const s = {
-  page: {
-    padding: "1rem",
-    maxWidth: "800px",
+const styles = {
+  container: {
+    maxWidth: "600px",
     margin: "0 auto",
   },
   header: {
-    marginBottom: "2rem",
+    marginBottom: "20px",
   },
   title: {
-    fontFamily: "var(--font-heading)",
+    fontSize: "20px",
+    fontWeight: "500",
     color: "var(--text-primary)",
-    fontSize: "2rem",
-    fontWeight: "700",
-    marginBottom: "0.25rem",
+    margin: "0 0 4px",
   },
   subtitle: {
+    fontSize: "13px",
     color: "var(--text-secondary)",
-    fontSize: "0.95rem",
-  },
-  toast: {
-    background: "rgba(34, 197, 94, 0.15)",
-    color: "#34d399",
-    border: "1px solid rgba(34, 197, 94, 0.25)",
-    padding: "0.75rem 1rem",
-    borderRadius: "10px",
-    marginBottom: "1rem",
-    fontWeight: "600",
-  },
-  error: {
-    background: "rgba(244, 63, 94, 0.15)",
-    color: "#f43f5e",
-    border: "1px solid rgba(244, 63, 94, 0.25)",
-    padding: "0.75rem 1rem",
-    borderRadius: "10px",
-    marginBottom: "1rem",
-    fontWeight: "600",
-  },
-  card: {
-    padding: "2.5rem",
-    borderRadius: "20px",
-    background: "var(--bg-surface)",
-    border: "1px solid var(--border-subtle)",
-    boxShadow: "var(--shadow-md)",
-  },
-  profileHeader: {
-    display: "flex",
-    alignItems: "center",
-    gap: "1.5rem",
-    marginBottom: "2.5rem",
-    borderBottom: "1px solid var(--border-subtle)",
-    paddingBottom: "1.5rem",
-    flexWrap: "wrap"
-  },
-  avatarContainer: {
-    position: "relative",
-    width: "80px",
-    height: "80px",
-  },
-  avatarImg: {
-    width: "80px",
-    height: "80px",
-    borderRadius: "50%",
-    objectFit: "cover",
-    border: "2px solid var(--accent-blue)",
-    boxShadow: "0 0 20px rgba(14, 165, 233, 0.3)"
-  },
-  avatarFallback: {
-    width: "80px",
-    height: "80px",
-    borderRadius: "50%",
-    background: "var(--grad-primary)",
-    color: "#ffffff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "2rem",
-    fontWeight: "800",
-    boxShadow: "0 0 20px rgba(14, 165, 233, 0.25)",
-  },
-  uploadLabel: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    background: "var(--accent-blue)",
-    color: "#ffffff",
-    width: "28px",
-    height: "28px",
-    borderRadius: "50%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    fontSize: "0.85rem",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
-  },
-  profileMeta: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.4rem",
-    flex: 1
-  },
-  name: {
-    color: "var(--text-primary)",
-    fontSize: "1.5rem",
-    fontWeight: "700",
-    fontFamily: "var(--font-heading)",
     margin: 0,
   },
-  badge: {
-    alignSelf: "flex-start",
-    background: "rgba(14, 165, 233, 0.1)",
-    color: "var(--accent-blue)",
-    border: "1px solid rgba(14, 165, 233, 0.2)",
-    padding: "0.25rem 0.75rem",
-    borderRadius: "12px",
-    fontSize: "0.75rem",
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-  },
-  editToggleBtn: {
-    background: "rgba(255, 255, 255, 0.05)",
-    border: "1px solid var(--border-subtle)",
+  toast: {
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border-strong)",
+    borderLeft: "4px solid var(--resolved)",
+    borderRadius: "var(--radius-lg)",
+    padding: "10px 14px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "13px",
     color: "var(--text-primary)",
-    padding: "0.5rem 1rem",
-    borderRadius: "10px",
+    marginBottom: "16px",
+  },
+  alertError: {
+    background: "var(--urgent-bg)",
+    color: "var(--urgent)",
+    border: "1px solid rgba(224, 36, 36, 0.3)",
+    padding: "10px 14px",
+    borderRadius: "var(--radius-md)",
+    fontSize: "13px",
+    marginBottom: "16px",
+  },
+  profileTop: {
+    display: "flex",
+    alignItems: "center",
+    gap: "18px",
+    paddingBottom: "24px",
+    borderBottom: "1px solid var(--border)",
+    flexWrap: "wrap",
+  },
+  avatarImg: {
+    width: "64px",
+    height: "64px",
+    borderRadius: "50%",
+    objectFit: "cover",
+    border: "2px solid var(--border-brand)",
+  },
+  avatarCircle: {
+    width: "64px",
+    height: "64px",
+    borderRadius: "50%",
+    background: "var(--brand-muted)",
+    color: "#FFFFFF",
+    fontSize: "24px",
     fontWeight: "600",
-    cursor: "pointer",
-    fontSize: "0.85rem"
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: "2px solid var(--brand)",
   },
-  infoGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "1.5rem",
+  userName: {
+    fontSize: "18px",
+    fontWeight: "600",
+    color: "var(--text-primary)",
+    margin: "0 0 2px",
   },
-  infoItem: {
+  userEmail: {
+    fontSize: "13px",
+    color: "var(--text-secondary)",
+  },
+  form: {
     display: "flex",
     flexDirection: "column",
-    gap: "0.4rem",
+    gap: "16px",
+    marginTop: "20px",
+  },
+  field: {
+    display: "flex",
+    flexDirection: "column",
   },
   label: {
-    color: "var(--text-secondary)",
-    fontSize: "0.85rem",
+    fontSize: "12px",
     fontWeight: "500",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-  },
-  value: {
-    color: "var(--text-primary)",
-    fontSize: "1.05rem",
-    fontWeight: "600",
-  },
-  statusValue: {
-    color: "#22c55e",
-    fontSize: "1.05rem",
-    fontWeight: "600",
-  },
-  editForm: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.25rem"
-  },
-  inputGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.4rem"
-  },
-  input: {
-    background: "rgba(15, 23, 42, 0.6)",
-    border: "1px solid var(--border-subtle)",
-    borderRadius: "10px",
-    padding: "0.75rem 1rem",
-    color: "var(--text-primary)",
-    fontSize: "0.95rem",
-    outline: "none"
-  },
-  fileInput: {
     color: "var(--text-secondary)",
-    fontSize: "0.88rem"
+    marginBottom: "6px",
   },
-  btnRow: {
+  actionRow: {
     display: "flex",
     justifyContent: "flex-end",
-    marginTop: "1rem"
+    gap: "10px",
+    marginTop: "8px",
   },
-  saveBtn: {
-    background: "var(--grad-primary)",
-    color: "#ffffff",
-    border: "none",
-    padding: "0.75rem 1.75rem",
-    borderRadius: "10px",
-    fontWeight: "700",
-    fontSize: "0.9rem",
-    cursor: "pointer"
-  }
+  readOnlyList: {
+    marginTop: "16px",
+    display: "flex",
+    flexDirection: "column",
+  },
+  row: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "12px 0",
+    borderBottom: "1px solid var(--border)",
+  },
+  rowLabel: {
+    fontSize: "13px",
+    color: "var(--text-muted)",
+  },
+  rowVal: {
+    fontSize: "13px",
+    fontWeight: "500",
+    color: "var(--text-primary)",
+  },
 };
 
 export default Profile;

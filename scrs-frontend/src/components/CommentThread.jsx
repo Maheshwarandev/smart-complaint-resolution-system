@@ -1,6 +1,5 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "../context";
-import { MessageSquare, Send } from "lucide-react";
 
 const CommentThread = ({ comments = [], onAddComment }) => {
   const { user } = useAuth();
@@ -23,37 +22,76 @@ const CommentThread = ({ comments = [], onAddComment }) => {
   };
 
   return (
-    <div style={s.container}>
-      <h4 style={s.headerTitle}><MessageSquare size={16} style={{verticalAlign:"middle",marginRight:"0.4rem"}} /> Conversation Thread ({comments.length})</h4>
+    <div style={styles.container}>
+      <div style={styles.headerRow}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <i className="ti ti-messages" style={{ fontSize: "16px", color: "var(--brand)" }} />
+          <span style={styles.headerTitle}>Conversation</span>
+        </div>
+        <span style={styles.replyCount}>{comments.length} replies</span>
+      </div>
 
-      <div style={s.commentList}>
+      <div style={styles.commentList}>
         {comments.length === 0 ? (
-          <p style={s.emptyText}>No messages yet. Start the conversation below!</p>
+          <div style={styles.emptyText}>
+            No messages in this thread yet. Write a reply below to update the ticket.
+          </div>
         ) : (
           comments.map((c, idx) => {
             const commentUser = c.user || {};
-            const isMe = commentUser._id === user?._id;
+            const isAgent = commentUser.role === "agent" || commentUser.role === "admin";
             const avatarUrl = commentUser.avatar;
             const name = commentUser.name || "User";
             const role = commentUser.role || "user";
 
             return (
-              <div key={c._id || idx} style={{ ...s.commentRow, flexDirection: isMe ? "row-reverse" : "row" }}>
+              <div key={c._id || idx} style={styles.commentRow}>
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt={name} style={s.avatarImg} />
+                  <img src={avatarUrl} alt={name} style={styles.avatarImg} />
                 ) : (
-                  <div style={s.avatarFallback}>
+                  <div
+                    style={{
+                      ...styles.avatarFallback,
+                      background: isAgent ? "var(--brand-muted)" : "var(--bg-hover)",
+                      color: isAgent ? "#FFFFFF" : "var(--text-primary)",
+                      borderColor: isAgent ? "var(--brand)" : "var(--border)",
+                    }}
+                  >
                     {name[0]?.toUpperCase() || "U"}
                   </div>
                 )}
 
-                <div style={{ ...s.bubble, alignSelf: isMe ? "flex-end" : "flex-start", background: isMe ? "rgba(14, 165, 233, 0.15)" : "rgba(255, 255, 255, 0.03)" }}>
-                  <div style={s.bubbleHeader}>
-                    <span style={s.senderName}>{name}</span>
-                    <span style={s.roleBadge}>{role}</span>
-                    <span style={s.time}>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <div
+                  style={{
+                    ...styles.bubble,
+                    background: isAgent ? "var(--brand-subtle)" : "var(--bg-elevated)",
+                    borderColor: isAgent ? "var(--brand-muted)" : "var(--border)",
+                  }}
+                >
+                  <div style={styles.bubbleHeader}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={styles.senderName}>{name}</span>
+                      <span
+                        className="badge-status"
+                        style={{
+                          background: isAgent ? "var(--brand)" : "var(--bg-hover)",
+                          color: isAgent ? "#FFFFFF" : "var(--text-secondary)",
+                          fontSize: "10px",
+                          padding: "1px 6px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {role}
+                      </span>
+                    </div>
+                    <span style={styles.time}>
+                      {new Date(c.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </div>
-                  <p style={s.commentText}>{c.text}</p>
+                  <p style={styles.commentText}>{c.text}</p>
                 </div>
               </div>
             );
@@ -61,135 +99,145 @@ const CommentThread = ({ comments = [], onAddComment }) => {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} style={s.form}>
+      {/* Reply Input */}
+      <form onSubmit={handleSubmit} style={styles.form}>
+        <div style={styles.userAvatarSmall}>
+          {user?.name?.[0]?.toUpperCase() || "U"}
+        </div>
         <input
           type="text"
-          placeholder="Type a message or response..."
+          placeholder="Write a reply or resolution message..."
           value={text}
           onChange={(e) => setText(e.target.value)}
-          style={s.input}
+          style={styles.input}
         />
-        <button type="submit" disabled={loading || !text.trim()} style={s.sendBtn}>
-          {loading ? "Sending..." : <><Send size={14} /> Send</>}
+        <button
+          type="submit"
+          disabled={loading || !text.trim()}
+          className="btn-primary"
+          style={{ height: "38px", padding: "0 16px" }}
+        >
+          {loading ? "Posting..." : "Send Reply →"}
         </button>
       </form>
     </div>
   );
 };
 
-const s = {
+const styles = {
   container: {
-    marginTop: "1.5rem",
-    paddingTop: "1.25rem",
-    borderTop: "1px solid var(--border-subtle)"
+    marginTop: "16px",
+    paddingTop: "14px",
+    borderTop: "1px solid var(--border)",
+  },
+  headerRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "12px",
   },
   headerTitle: {
-    margin: "0 0 1rem",
+    fontSize: "13px",
+    fontWeight: "600",
     color: "var(--text-primary)",
-    fontSize: "1rem",
-    fontWeight: "700"
+  },
+  replyCount: {
+    fontSize: "11px",
+    color: "var(--text-muted)",
+    fontFamily: "var(--font-mono)",
   },
   commentList: {
     display: "flex",
     flexDirection: "column",
-    gap: "1rem",
-    maxHeight: "350px",
+    gap: "12px",
+    maxHeight: "360px",
     overflowY: "auto",
-    paddingRight: "0.25rem",
-    marginBottom: "1rem"
+    marginBottom: "14px",
+    paddingRight: "4px",
   },
   emptyText: {
-    color: "var(--text-secondary)",
-    fontSize: "0.88rem",
+    fontSize: "12px",
+    color: "var(--text-muted)",
     fontStyle: "italic",
-    margin: 0
+    padding: "8px 0",
   },
   commentRow: {
     display: "flex",
-    gap: "0.75rem",
-    alignItems: "flex-start"
+    alignItems: "flex-start",
+    gap: "10px",
   },
   avatarImg: {
-    width: "36px",
-    height: "36px",
+    width: "28px",
+    height: "28px",
     borderRadius: "50%",
     objectFit: "cover",
-    border: "1px solid var(--border-subtle)"
+    flexShrink: 0,
+    marginTop: "2px",
   },
   avatarFallback: {
-    width: "36px",
-    height: "36px",
+    width: "28px",
+    height: "28px",
     borderRadius: "50%",
-    background: "var(--grad-primary)",
-    color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontWeight: "700",
-    fontSize: "0.9rem",
-    flexShrink: 0
+    fontSize: "11px",
+    fontWeight: "600",
+    flexShrink: 0,
+    border: "1px solid",
+    marginTop: "2px",
   },
   bubble: {
-    borderRadius: "12px",
-    padding: "0.75rem 1rem",
-    border: "1px solid var(--border-subtle)",
-    maxWidth: "80%"
+    flex: 1,
+    border: "1px solid",
+    borderRadius: "0 var(--radius-lg) var(--radius-lg) var(--radius-lg)",
+    padding: "10px 14px",
   },
   bubbleHeader: {
     display: "flex",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: "0.5rem",
-    marginBottom: "0.35rem"
+    marginBottom: "4px",
   },
   senderName: {
+    fontSize: "12px",
+    fontWeight: "600",
     color: "var(--text-primary)",
-    fontSize: "0.85rem",
-    fontWeight: "700"
-  },
-  roleBadge: {
-    background: "rgba(255, 255, 255, 0.08)",
-    color: "var(--accent-blue)",
-    padding: "0.1rem 0.4rem",
-    borderRadius: "6px",
-    fontSize: "0.68rem",
-    fontWeight: "700",
-    textTransform: "uppercase"
   },
   time: {
+    fontSize: "10px",
     color: "var(--text-muted)",
-    fontSize: "0.72rem",
-    marginLeft: "auto"
+    fontFamily: "var(--font-mono)",
   },
   commentText: {
+    fontSize: "13px",
+    color: "var(--text-primary)",
+    lineHeight: "1.5",
     margin: 0,
-    color: "var(--text-secondary)",
-    fontSize: "0.88rem",
-    lineHeight: "1.45"
   },
   form: {
     display: "flex",
-    gap: "0.5rem"
+    alignItems: "center",
+    gap: "10px",
+    marginTop: "10px",
+  },
+  userAvatarSmall: {
+    width: "28px",
+    height: "28px",
+    borderRadius: "50%",
+    background: "var(--brand)",
+    color: "#FFFFFF",
+    fontSize: "11px",
+    fontWeight: "600",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
   input: {
     flex: 1,
-    background: "rgba(15, 23, 42, 0.6)",
-    border: "1px solid var(--border-subtle)",
-    borderRadius: "10px",
-    padding: "0.65rem 0.9rem",
-    color: "var(--text-primary)",
-    fontSize: "0.88rem",
-    outline: "none"
+    height: "38px",
   },
-  sendBtn: {
-    background: "var(--grad-primary)",
-    color: "#ffffff",
-    border: "none",
-    padding: "0.65rem 1.25rem",
-    borderRadius: "10px",
-    fontWeight: "700",
-    fontSize: "0.85rem",
-    cursor: "pointer"
-  }
 };
 
 export default CommentThread;

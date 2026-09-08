@@ -1,14 +1,18 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context";
-import Spinner from "./Spinner";
 
 // Wraps any route that requires authentication
 // allowedRoles: optional array — if provided, also checks role
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
 
-  // Still checking localStorage / verifying token — show spinner
-  if (loading) return <Spinner />;
+  // Still checking localStorage / verifying token — show inline spinner
+  if (loading) return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", marginTop: "3rem", gap: "0.75rem" }}>
+      <i className="ti ti-loader-2" style={{ fontSize: "32px", color: "#38bdf8", animation: "spin 1s linear infinite" }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 
   // Not logged in → send to login page
   if (!user) return <Navigate to="/login" replace />;

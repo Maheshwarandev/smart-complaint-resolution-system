@@ -1,152 +1,630 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { getDashboardAPI } from "../../api";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { getDashboardAPI, getAllComplaintsAPI } from "../../api";
 import { useAuth } from "../../context";
-import { Spinner } from "../../components";
-import { PageHero, StatStrip, StatusBreakdown, ComplaintCard } from "../../components/dashboard";
-import { Users, Shield, FileText } from "lucide-react";
+import { Spinner, SLABadge } from "../../components";
+import { exportComplaintsToCSV } from "../../utils/csvExporter";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
   const [data, setData] = useState(null);
+  const [allComplaints, setAllComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
+
+  const loadData = async () => {
+    try {
+      const [dashRes, compRes] = await Promise.all([
+        getDashboardAPI(),
+        getAllComplaintsAPI(),
+      ]);
+      setData(dashRes.data?.data?.dashboard || {});
+      setAllComplaints(compRes.data?.complaints || []);
+    } catch (err) {
+      setError("Failed to load admin analytics.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await getDashboardAPI();
-        setData(res.data.data.dashboard);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load dashboard.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    loadData();
   }, []);
 
+  const todayStr = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const handleExport = () => {
+    if (!allComplaints || allComplaints.length === 0) {
+      alert("No complaint records to export.");
+      return;
+    }
+    exportComplaintsToCSV(allComplaints, "System_Complaints_Report.csv");
+    setToast("System Complaints Report exported successfully!");
+    setTimeout(() => setToast(""), 3500);
+  };
+
   if (loading) return <Spinner />;
-  if (error) return <div style={{ padding: "2rem", color: "#dc2626" }}>{error}</div>;
-  if (!data) return <div style={{ padding: "2rem", color: "#dc2626" }}>No data available</div>;
 
   const {
     summary = {},
     complaintsByStatus = [],
     complaintsByCategory = [],
     recentComplaints = [],
-  } = data;
+  } = data || {};
 
   const totalComplaints = summary.totalComplaints || 0;
-  const resolvedCount = complaintsByStatus.find(s => s._id === "Resolved")?.count || 0;
+  const overdueCount = summary.slaBreachedCount || 0;
 
-  const CATEGORY_COLORS = ["#f43f5e", "#fbbf24", "#818cf8", "#34d399", "#06b6d4"];
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case "Open":
+        return "badge-open";
+      case "In Progress":
+        return "badge-progress";
+      case "Resolved":
+        return "badge-resolved";
+      default:
+        return "badge-closed";
+    }
+  };
 
   return (
-    <div style={s.page} className="animate-fade-in">
-      <PageHero
-        name={user?.name}
-        role="Admin Portal"
-        accentColor="#f43f5e"
-        badgeText="System Active"
-        actionLabel="Manage Complaints →"
-        actionTo="/admin/complaints"
-      />
+    <div style={styles.page}>
+      {/* Toast Alert */}
+      {toast && (
+        <div style={styles.toast}>
+          <i className="ti ti-check" style={{ color: "var(--resolved)", fontSize: "16px" }} />
+          <span>{toast}</span>
+        </div>
+      )}
 
-      <StatStrip
-        stats={[
-          { label: "Total Users", value: summary.totalUsers || 0, accent: "#f43f5e" },
-          { label: "Total Agents", value: summary.totalAgents || 0, accent: "#fbbf24" },
-          { label: "Total Complaints", value: totalComplaints, accent: "#818cf8" },
-          { label: "Resolved", value: resolvedCount, accent: "#34d399" },
-          { label: "SLA Breaches", value: summary.slaBreachedCount || 0, accent: summary.slaBreachedCount > 0 ? "#f43f5e" : "#10b981" },
-          { label: "Avg CSAT", value: summary.avgRating ? `${summary.avgRating} ★` : "5.0 ★", accent: "#fbbf24" },
-        ]}
-        total={totalComplaints}
-      />
+      {/* Page Header */}
+      <div style={styles.header}>
+        <div>
+          <h1 style={styles.title}>Admin Overview</h1>
+          <p style={styles.subtitle}>{todayStr} · System Administration</p>
+        </div>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <button
+            type="button"
+            onClick={loadData}
+            className="btn-ghost"
+            style={{ height: "36px" }}
+            title="Refresh dashboard metrics"
+          >
+            <i className="ti ti-refresh" /> Refresh
+          </button>
 
-      <div style={s.columns} className="columns-layout">
-        {/* LEFT — recent complaints */}
-        <div style={s.mainPanel} className="glass-panel">
-          <div style={s.panelHead}>
-            <h2 style={s.panelTitle}>Recent Complaints</h2>
-            <Link to="/admin/complaints" style={s.viewAll}>View all →</Link>
-          </div>
+          <button
+            type="button"
+            onClick={handleExport}
+            className="btn-primary"
+            style={{ height: "36px" }}
+            title="Export CSV report of all complaints"
+          >
+            <i className="ti ti-download" /> Export Report
+          </button>
+        </div>
+      </div>
 
-          {recentComplaints.length === 0 ? (
-            <div style={s.emptyState}>
-              <p style={s.emptyIcon}><FileText size={32} color="var(--text-muted)" /></p>
-              <p style={s.emptyText}>No complaints in the system yet</p>
-            </div>
-          ) : (
-            <div style={s.cardList}>
-              {recentComplaints.map(c => (
-                <ComplaintCard key={c._id} complaint={c} />
-              ))}
-            </div>
+      {error && <div style={styles.alertError}>{error}</div>}
+
+      {/* SLA Overview Bar */}
+      <div style={styles.slaOverviewBar}>
+        <div style={styles.slaLeft}>
+          <i className="ti ti-clock" style={{ fontSize: "16px", color: "var(--brand)" }} />
+          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>SLA Overview:</span>
+        </div>
+        <div style={styles.slaPillsRow}>
+          <button
+            type="button"
+            onClick={() => navigate("/admin/complaints?filter=overdue")}
+            style={styles.slaPillOverdue}
+            title="Click to view all overdue complaints"
+          >
+            🔴 {overdueCount} Overdue →
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/admin/complaints")}
+            style={styles.slaPillOnTrack}
+            title="Click to view on-track complaints"
+          >
+            🟢 {Math.max(0, totalComplaints - overdueCount)} On track →
+          </button>
+          {summary.avgRating && (
+            <button
+              type="button"
+              onClick={() => navigate("/admin/agents")}
+              style={styles.slaPillRating}
+              title="Click to view agent performance & CSAT ratings"
+            >
+              ★ {summary.avgRating}/5 Avg CSAT ({summary.totalRatings || 0} reviews) →
+            </button>
           )}
         </div>
+      </div>
 
-        {/* RIGHT — breakdowns + quick links */}
-        <div style={s.sidePanel}>
-          <StatusBreakdown
-            title="By Status"
-            items={complaintsByStatus}
-            total={totalComplaints}
-          />
-
-          <StatusBreakdown
-            title="By Category"
-            items={complaintsByCategory}
-            total={totalComplaints}
-            barColors={CATEGORY_COLORS}
-          />
-
-          <div style={s.quickCard} className="glass-panel">
-            <h3 style={s.sideTitle}>Quick Actions</h3>
-            {[
-              { to: "/admin/users",      icon: Users, label: "Manage Users" },
-              { to: "/admin/agents",     icon: Shield, label: "Manage Agents" },
-              { to: "/admin/complaints", icon: FileText, label: "Manage Complaints" },
-            ].map(({ to, icon, label }) => (
-              <Link key={to} to={to} style={s.quickLink} className="hover-lift">
-                {(() => { const Icon = icon; return <Icon size={18} style={{color:"var(--text-secondary)"}} />; })()}
-                <span style={s.quickLabel}>{label}</span>
-                <span style={s.quickArrow}>→</span>
-              </Link>
-            ))}
+      {/* 3 Main Clickable Stats Cards */}
+      <div style={styles.statsGrid}>
+        <div
+          className="stat-card"
+          style={{ ...styles.clickableCard, borderTop: "3px solid var(--brand)" }}
+          onClick={() => navigate("/admin/users")}
+          title="Click to manage users"
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div className="stat-card-num">{summary.totalUsers || 0}</div>
+              <div className="stat-card-label">Total Users</div>
+            </div>
+            <i className="ti ti-arrow-up-right" style={styles.cardArrow} />
+          </div>
+          <div className="stat-card-trend" style={{ color: "var(--brand)" }}>
+            <i className="ti ti-users" /> Registered employees · Manage →
           </div>
         </div>
+
+        <div
+          className="stat-card"
+          style={{ ...styles.clickableCard, borderTop: "3px solid #06b6d4" }}
+          onClick={() => navigate("/admin/agents")}
+          title="Click to manage support agents"
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div className="stat-card-num">{summary.totalAgents || 0}</div>
+              <div className="stat-card-label">Support Agents</div>
+            </div>
+            <i className="ti ti-arrow-up-right" style={styles.cardArrow} />
+          </div>
+          <div className="stat-card-trend" style={{ color: "#06b6d4" }}>
+            <i className="ti ti-shield" /> Active resolvers · Manage →
+          </div>
+        </div>
+
+        <div
+          className="stat-card"
+          style={{ ...styles.clickableCard, borderTop: "3px solid var(--progress)" }}
+          onClick={() => navigate("/admin/complaints")}
+          title="Click to view all complaints"
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div className="stat-card-num">{totalComplaints}</div>
+              <div className="stat-card-label">Total Complaints</div>
+            </div>
+            <i className="ti ti-arrow-up-right" style={styles.cardArrow} />
+          </div>
+          <div className="stat-card-trend" style={{ color: "var(--progress)" }}>
+            <i className="ti ti-ticket" /> Lifetime tickets · View →
+          </div>
+        </div>
+      </div>
+
+      {/* Breakdown Panels (Side by Side) */}
+      <div style={styles.twoCol}>
+        {/* By Status Panel */}
+        <div className="panel" style={{ flex: 1 }}>
+          <div className="panel-header">
+            <span className="panel-title">Complaints by Status</span>
+            <Link
+              to="/admin/complaints"
+              style={{ fontSize: "12px", color: "var(--brand)", fontWeight: 500 }}
+            >
+              View all →
+            </Link>
+          </div>
+          <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {complaintsByStatus.length === 0 ? (
+              <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>No complaints data</div>
+            ) : (
+              complaintsByStatus.map((s) => {
+                const pct = totalComplaints > 0 ? (s.count / totalComplaints) * 100 : 0;
+                const col =
+                  s._id === "Open"
+                    ? "var(--open)"
+                    : s._id === "In Progress"
+                    ? "var(--progress)"
+                    : s._id === "Resolved"
+                    ? "var(--resolved)"
+                    : "var(--closed)";
+                return (
+                  <div
+                    key={s._id}
+                    style={styles.clickableBreakdownRow}
+                    onClick={() => navigate(`/admin/complaints?status=${encodeURIComponent(s._id)}`)}
+                    title={`Click to filter complaints with status: ${s._id}`}
+                  >
+                    <div style={styles.barLabelRow}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: col }} />
+                        <span style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: 500 }}>
+                          {s._id}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
+                        {s.count} <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 400 }}>({pct.toFixed(0)}%)</span>
+                      </span>
+                    </div>
+                    <div style={styles.barTrack}>
+                      <div style={{ ...styles.barFill, width: `${pct}%`, background: col }} />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* By Category Panel */}
+        <div className="panel" style={{ flex: 1 }}>
+          <div className="panel-header">
+            <span className="panel-title">Complaints by Category</span>
+            <Link
+              to="/admin/complaints"
+              style={{ fontSize: "12px", color: "var(--brand)", fontWeight: 500 }}
+            >
+              View all →
+            </Link>
+          </div>
+          <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {complaintsByCategory.length === 0 ? (
+              <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>No categories data</div>
+            ) : (
+              complaintsByCategory.slice(0, 5).map((cat) => {
+                const pct = totalComplaints > 0 ? (cat.count / totalComplaints) * 100 : 0;
+                return (
+                  <div
+                    key={cat._id}
+                    style={styles.clickableBreakdownRow}
+                    onClick={() => navigate(`/admin/complaints?category=${encodeURIComponent(cat._id)}`)}
+                    title={`Click to filter complaints in category: ${cat._id}`}
+                  >
+                    <div style={styles.barLabelRow}>
+                      <span style={{ fontSize: "13px", color: "var(--text-primary)", textTransform: "capitalize", fontWeight: 500 }}>
+                        {cat._id}
+                      </span>
+                      <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
+                        {cat.count} <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 400 }}>({pct.toFixed(0)}%)</span>
+                      </span>
+                    </div>
+                    <div style={styles.barTrack}>
+                      <div style={{ ...styles.barFill, width: `${pct}%`, background: "var(--brand)" }} />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Complaints Table */}
+      <div className="panel">
+        <div className="panel-header">
+          <span className="panel-title">Recent Complaints</span>
+          <Link to="/admin/complaints" style={{ fontSize: "12px", color: "var(--brand)", fontWeight: 500 }}>
+            Manage all tickets →
+          </Link>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>ID</th>
+                <th style={styles.th}>Title</th>
+                <th style={styles.th}>User</th>
+                <th style={styles.th}>Category</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.th}>SLA Target</th>
+                <th style={{ ...styles.th, textAlign: "right" }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentComplaints.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={styles.emptyTd}>
+                    No complaints in the system yet.
+                  </td>
+                </tr>
+              ) : (
+                recentComplaints.map((c) => (
+                  <tr
+                    key={c._id}
+                    style={styles.tr}
+                    onClick={() => navigate(`/admin/complaints?id=${c._id}`)}
+                    title="Click to manage this complaint"
+                  >
+                    <td style={{ ...styles.td, fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--text-muted)" }}>
+                      #SCR-{c._id.toString().slice(-4).toUpperCase()}
+                    </td>
+                    <td style={{ ...styles.td, fontWeight: 500, color: "var(--text-primary)" }}>
+                      {c.title}
+                    </td>
+                    <td style={styles.td}>{c.user?.name || "User"}</td>
+                    <td style={{ ...styles.td, textTransform: "capitalize" }}>{c.category}</td>
+                    <td style={styles.td}>
+                      <span className={`badge-status ${getStatusBadgeClass(c.status)}`}>
+                        <span className="badge-dot" />
+                        <span>{c.status}</span>
+                      </span>
+                    </td>
+                    <td style={styles.td}>
+                      <SLABadge
+                        deadline={c.slaDeadline}
+                        breached={c.slaBreached}
+                        status={c.status}
+                        resolvedAt={c.resolvedAt}
+                      />
+                    </td>
+                    <td style={{ ...styles.td, textAlign: "right" }}>
+                      <span style={{ color: "var(--brand)", fontSize: "12px", fontWeight: 500 }}>
+                        Open →
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Quick Actions Grid (3 Columns) */}
+      <div style={styles.actionsGrid}>
+        <Link to="/admin/users" style={styles.actionCard}>
+          <div style={styles.actionIconWrap}>
+            <i className="ti ti-user-plus" style={{ fontSize: "20px", color: "var(--brand)" }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Users Directory</div>
+            <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Manage accounts & roles</div>
+          </div>
+          <i className="ti ti-chevron-right" style={{ color: "var(--text-muted)", fontSize: "14px" }} />
+        </Link>
+
+        <Link to="/admin/agents" style={styles.actionCard}>
+          <div style={{ ...styles.actionIconWrap, background: "rgba(6, 182, 212, 0.12)", border: "1px solid rgba(6, 182, 212, 0.25)" }}>
+            <i className="ti ti-shield" style={{ fontSize: "20px", color: "#06b6d4" }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Support Engineers</div>
+            <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Manage agent passkeys</div>
+          </div>
+          <i className="ti ti-chevron-right" style={{ color: "var(--text-muted)", fontSize: "14px" }} />
+        </Link>
+
+        <Link to="/admin/complaints" style={styles.actionCard}>
+          <div style={{ ...styles.actionIconWrap, background: "rgba(227, 160, 8, 0.12)", border: "1px solid rgba(227, 160, 8, 0.25)" }}>
+            <i className="ti ti-clipboard" style={{ fontSize: "20px", color: "var(--open)" }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>All Complaints</div>
+            <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Assign & update statuses</div>
+          </div>
+          <i className="ti ti-chevron-right" style={{ color: "var(--text-muted)", fontSize: "14px" }} />
+        </Link>
       </div>
     </div>
   );
 };
 
-const s = {
-  page: { padding: "2rem", maxWidth: "1600px", margin: "0 auto", fontFamily: "inherit" },
-  columns: { display: "grid", gridTemplateColumns: "1fr 340px", gap: "1.5rem", alignItems: "start" },
-  mainPanel: { padding: "1.75rem", boxShadow: "none" },
-  panelHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" },
-  panelTitle: { margin: 0, color: "var(--text-primary)", fontSize: "1.2rem", fontWeight: "800" },
-  viewAll: { color: "var(--accent-blue)", fontSize: "0.88rem", textDecoration: "none", fontWeight: "600", transition: "color 0.2s" },
-  emptyState: { textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" },
-  emptyIcon: { fontSize: "3rem", margin: "0 0 0.75rem" },
-  emptyText: { margin: 0, fontSize: "1rem", fontWeight: "600", color: "var(--text-secondary)" },
-  cardList: { display: "flex", flexDirection: "column", gap: "0.85rem" },
-  sidePanel: { display: "flex", flexDirection: "column", gap: "1rem" },
-  sideTitle: { margin: "0 0 1.25rem", color: "var(--text-primary)", fontSize: "1.05rem", fontWeight: "800" },
-  quickCard: { background: "linear-gradient(135deg, rgba(244, 63, 94, 0.12) 0%, rgba(244, 63, 94, 0.03) 100%)", border: "1px solid rgba(244, 63, 94, 0.2)", padding: "1.5rem" },
-  quickLink: {
-    display: "flex", alignItems: "center", gap: "0.75rem",
-    padding: "0.75rem 1rem", borderRadius: "10px",
-    background: "rgba(255, 255, 255, 0.02)", textDecoration: "none",
-    color: "var(--text-primary)", marginBottom: "0.6rem",
-    border: "1px solid var(--border-subtle)", transition: "all 0.2s ease",
+const styles = {
+  page: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px",
   },
-  quickIcon: { fontSize: "1.15rem" },
-  quickLabel: { flex: 1, fontWeight: "600", fontSize: "0.9rem" },
-  quickArrow: { color: "#f43f5e", fontWeight: "700" },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+    gap: "12px",
+  },
+  title: {
+    fontSize: "20px",
+    fontWeight: "500",
+    color: "var(--text-primary)",
+    margin: 0,
+  },
+  subtitle: {
+    fontSize: "13px",
+    color: "var(--text-secondary)",
+    margin: "4px 0 0",
+  },
+  toast: {
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border-strong)",
+    borderLeft: "4px solid var(--resolved)",
+    borderRadius: "var(--radius-lg)",
+    padding: "10px 14px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "13px",
+    color: "var(--text-primary)",
+  },
+  alertError: {
+    background: "var(--urgent-bg)",
+    color: "var(--urgent)",
+    border: "1px solid rgba(224, 36, 36, 0.3)",
+    padding: "10px 14px",
+    borderRadius: "var(--radius-md)",
+    fontSize: "13px",
+  },
+  slaOverviewBar: {
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    padding: "12px 18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+  slaLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "13px",
+  },
+  slaPillsRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+  slaPillOverdue: {
+    background: "var(--urgent-bg)",
+    color: "var(--urgent)",
+    border: "1px solid rgba(224, 36, 36, 0.3)",
+    padding: "4px 12px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    transition: "transform 100ms ease, background 150ms ease",
+  },
+  slaPillOnTrack: {
+    background: "var(--resolved-bg)",
+    color: "var(--resolved)",
+    border: "1px solid rgba(14, 159, 110, 0.3)",
+    padding: "4px 12px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    transition: "transform 100ms ease, background 150ms ease",
+  },
+  slaPillRating: {
+    background: "var(--open-bg)",
+    color: "var(--open)",
+    border: "1px solid rgba(227, 160, 8, 0.3)",
+    padding: "4px 12px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    transition: "transform 100ms ease, background 150ms ease",
+  },
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "12px",
+  },
+  clickableCard: {
+    cursor: "pointer",
+    transition: "transform 150ms ease, border-color 150ms ease, background 150ms ease",
+  },
+  cardArrow: {
+    color: "var(--text-muted)",
+    fontSize: "14px",
+    transition: "transform 150ms ease",
+  },
+  twoCol: {
+    display: "flex",
+    gap: "16px",
+    flexWrap: "wrap",
+  },
+  clickableBreakdownRow: {
+    cursor: "pointer",
+    padding: "4px 6px",
+    borderRadius: "var(--radius-md)",
+    transition: "background 150ms ease",
+  },
+  barLabelRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "6px",
+  },
+  barTrack: {
+    height: "6px",
+    background: "var(--bg-base)",
+    borderRadius: "3px",
+    overflow: "hidden",
+  },
+  barFill: {
+    height: "100%",
+    borderRadius: "3px",
+    transition: "width 300ms ease",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    textAlign: "left",
+    fontSize: "13px",
+  },
+  th: {
+    padding: "10px 14px",
+    background: "var(--bg-surface)",
+    color: "var(--text-muted)",
+    fontSize: "11px",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: "0.07em",
+    borderBottom: "1px solid var(--border)",
+  },
+  tr: {
+    cursor: "pointer",
+    transition: "background 120ms ease",
+  },
+  td: {
+    padding: "12px 14px",
+    color: "var(--text-primary)",
+    borderBottom: "1px solid var(--border)",
+  },
+  emptyTd: {
+    padding: "24px 14px",
+    textAlign: "center",
+    color: "var(--text-muted)",
+  },
+  actionsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "12px",
+  },
+  actionCard: {
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    padding: "14px 18px",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    textDecoration: "none",
+    transition: "background 150ms ease, border-color 150ms ease, transform 100ms ease",
+  },
+  actionIconWrap: {
+    width: "36px",
+    height: "36px",
+    borderRadius: "var(--radius-md)",
+    background: "var(--brand-subtle)",
+    border: "1px solid var(--brand-muted)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 };
 
 export default AdminDashboard;

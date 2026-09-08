@@ -1,23 +1,9 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { getAllComplaintsAPI, updateComplaintAPI, addCommentAPI } from "../../api";
 import { useAuth } from "../../context";
 import { Spinner, ActivityTimeline, AttachmentList, CommentThread, StarRating, SLABadge } from "../../components";
 import { exportComplaintsToCSV } from "../../utils/csvExporter";
-
-const STATUS_COLORS = {
-  Open: { bg: "rgba(59, 130, 246, 0.15)", color: "#60a5fa" },
-  "In Progress": { bg: "rgba(245, 158, 11, 0.15)", color: "#fbbf24" },
-  Resolved: { bg: "rgba(34, 197, 94, 0.15)", color: "#34d399" },
-  Closed: { bg: "rgba(148, 163, 184, 0.15)", color: "#94a3b8" },
-};
-
-const PRIORITY_COLORS = {
-  High: { color: "#dc2626" },
-  Medium: { color: "#d97706" },
-  Low: { color: "#16a34a" },
-};
-
-const STATUS_FLOW = ["Open", "In Progress", "Resolved", "Closed"];
+import { getPriorityClass, getStatusBadgeClass } from "../../utils/complaintsHelpers";
 
 const AgentComplaints = () => {
   const { user } = useAuth();
@@ -26,40 +12,39 @@ const AgentComplaints = () => {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState(null);
-  const [editingId, setEditingId] = useState(null);
-  const [editData, setEditData] = useState({});
+  const [toast, setToast] = useState("");
+
+  const loadData = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const res = await getAllComplaintsAPI();
+      const myId = user._id.toString();
+      const assigned = (res.data.complaints || []).filter((c) => {
+        if (!c.assignedTo) return false;
+        const agentId = typeof c.assignedTo === "string" ? c.assignedTo : c.assignedTo._id.toString();
+        return agentId === myId;
+      });
+      setComplaints(assigned);
+    } catch {
+      setError("Failed to load assigned complaints.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!user) return;
-    const fetch = async () => {
-      try {
-        const res = await getAllComplaintsAPI();
-        const myId = user._id.toString();
-        // Filter complaints assigned to this agent
-        // assignedTo can be either a string (ID) or an object (populated user)
-        const assigned = res.data.complaints.filter(c => {
-          if (!c.assignedTo) return false;
-          const agentId = typeof c.assignedTo === 'string'
-            ? c.assignedTo
-            : c.assignedTo._id.toString();
-          return agentId === myId;
-        });
-        setComplaints(assigned);
-      } catch {
-        setError("Failed to load complaints.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
+    loadData();
   }, [user]);
 
   const handleStatusChange = async (complaintId, newStatus) => {
     try {
       await updateComplaintAPI(complaintId, { status: newStatus });
-      setComplaints(prev =>
-        prev.map(c => c._id === complaintId ? { ...c, status: newStatus } : c)
+      setComplaints((prev) =>
+        prev.map((c) => (c._id === complaintId ? { ...c, status: newStatus } : c))
       );
+      setToast(`Status updated to "${newStatus}"`);
+      setTimeout(() => setToast(""), 3000);
     } catch (err) {
       alert(err.response?.data?.message || "Status update failed.");
     }
@@ -67,271 +52,157 @@ const AgentComplaints = () => {
 
   const handleAddComment = async (complaintId, text) => {
     const res = await addCommentAPI(complaintId, text);
-    setComplaints(prev => prev.map(c => c._id === complaintId ? res.data.data : c));
+    setComplaints((prev) =>
+      prev.map((c) => (c._id === complaintId ? res.data.data : c))
+    );
   };
 
-  const handleSaveEdit = async (complaintId) => {
-    try {
-      await updateComplaintAPI(complaintId, editData);
-      setComplaints(prev =>
-        prev.map(c => c._id === complaintId ? { ...c, ...editData } : c)
-      );
-      setEditingId(null);
-      setEditData({});
-    } catch (err) {
-      alert(err.response?.data?.message || "Update failed.");
-    }
-  };
-
-  const filtered = complaints.filter(c => {
-    return search.trim() === "" ||
+  const filtered = complaints.filter((c) => {
+    return (
+      search.trim() === "" ||
       c.title.toLowerCase().includes(search.toLowerCase()) ||
       c.category.toLowerCase().includes(search.toLowerCase()) ||
-      (c.user?.name || "").toLowerCase().includes(search.toLowerCase());
+      (c.user?.name || "").toLowerCase().includes(search.toLowerCase())
+    );
   });
+
 
   if (loading) return <Spinner />;
 
-  const s = styles;
   return (
-    <div style={s.page} className="animate-fade-in">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-        <h1 style={s.title}>My Assigned Complaints</h1>
-        <button 
-          onClick={() => exportComplaintsToCSV(filtered, "Agent_Assigned_Complaints.csv")}
-          style={{
-            background: "rgba(56, 189, 248, 0.12)", color: "var(--accent-blue)",
-            border: "1px solid rgba(56, 189, 248, 0.25)", padding: "0.5rem 1.1rem",
-            borderRadius: "10px", fontWeight: "700", cursor: "pointer", fontSize: "0.88rem"
-          }}
+    <div style={styles.page}>
+      {toast && (
+        <div style={styles.toast}>
+          <i className="ti ti-check" style={{ color: "var(--resolved)" }} />
+          <span>{toast}</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={styles.header}>
+        <div>
+          <h1 style={styles.title}>Assigned Queue</h1>
+          <p style={styles.subtitle}>{complaints.length} complaints assigned to your queue</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => exportComplaintsToCSV(filtered, "Agent_Queue_Report.csv")}
+          className="btn-ghost"
+          style={{ height: "36px" }}
         >
-          📥 Export CSV
+          <i className="ti ti-download" /> Export CSV
         </button>
       </div>
-      <p style={s.sub}>{complaints.length} complaints assigned to you</p>
 
-      {error && <div style={s.error}>{error}</div>}
+      {error && <div style={styles.alertError}>{error}</div>}
 
-      <div style={{ marginBottom: "1.5rem" }}>
+      {/* Search Bar */}
+      <div style={styles.searchWrap}>
+        <i className="ti ti-search" style={styles.searchIcon} />
         <input
           type="text"
-          placeholder="🔍 Search assigned complaints by title, category, complainant..."
+          placeholder="Search assigned tickets by title, category, complainant..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{
-            background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border-subtle)",
-            borderRadius: "10px", padding: "0.75rem 1rem", color: "var(--text-primary)",
-            fontSize: "0.92rem", width: "100%", boxSizing: "border-box", outline: "none"
-          }}
+          style={styles.searchInput}
         />
       </div>
 
+      {/* Complaint List */}
       {filtered.length === 0 ? (
-        <div style={s.empty} className="glass-panel">
-          No matching complaints found.
+        <div style={styles.empty}>
+          <i className="ti ti-inbox" style={{ fontSize: "40px", color: "var(--text-muted)", marginBottom: "8px" }} />
+          <div style={{ color: "var(--text-primary)", fontWeight: 500 }}>No tickets found in your queue</div>
         </div>
       ) : (
-        <div style={s.list}>
+        <div style={styles.list}>
           {filtered.map((c) => {
-            const sc = STATUS_COLORS[c.status] || {};
-            const pc = PRIORITY_COLORS[c.priority] || {};
             const isExpanded = expandedId === c._id;
-            const isEditing = editingId === c._id;
 
             return (
-              <div key={c._id} style={s.card} className="glass-panel">
-                {/* Header Row */}
-                <div
-                  style={s.cardHeader}
-                  onClick={() => setExpandedId(isExpanded ? null : c._id)}
-                >
-                  <div style={s.cardTitle}>
-                    <h3 style={s.title3}>{c.title}</h3>
-                    <SLABadge 
-                      deadline={c.slaDeadline} 
-                      breached={c.slaBreached} 
-                      status={c.status} 
-                      resolvedAt={c.resolvedAt} 
-                    />
-                    <span
-                      style={{
-                        ...s.badge,
-                        background: sc.bg,
-                        color: sc.color,
-                      }}
-                    >
-                      {c.status}
+              <div
+                key={c._id}
+                className={`complaint-card ${getPriorityClass(c.priority)}`}
+              >
+                {/* Top Row */}
+                <div style={styles.cardRow1}>
+                  <span style={styles.ticketId}>
+                    #SCR-{c._id.toString().slice(-4).toUpperCase()} · Complainant: {c.user?.name || "User"} ({c.user?.email || "N/A"})
+                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span className={`badge-status ${getStatusBadgeClass(c.status)}`}>
+                      <span className="badge-dot" />
+                      <span>{c.status}</span>
                     </span>
                   </div>
-                  <span style={{ fontSize: "1.1rem", cursor: "pointer", color: "var(--text-secondary)" }}>
-                    {isExpanded ? "▼" : "▶"}
+                </div>
+
+                <h3 style={styles.cardTitle}>{c.title}</h3>
+
+                <div style={styles.cardMeta}>
+                  <span style={styles.metaItem}>Category: {c.category}</span>
+                  <span style={styles.metaItem}>
+                    Priority: <strong style={{ textTransform: "capitalize" }}>{c.priority}</strong>
                   </span>
+                  <SLABadge
+                    deadline={c.slaDeadline}
+                    breached={c.slaBreached}
+                    status={c.status}
+                    resolvedAt={c.resolvedAt}
+                  />
+                  <span>Submitted: {new Date(c.createdAt).toLocaleDateString()}</span>
+                </div>
+
+                {/* Inline Status Action */}
+                <div style={styles.cardActionsRow}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Update status:</span>
+                    <select
+                      value={c.status}
+                      onChange={(e) => handleStatusChange(c._id, e.target.value)}
+                      style={styles.statusSelect}
+                    >
+                      <option value="Open">Open</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Resolved">Resolved</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(isExpanded ? null : c._id)}
+                    style={styles.threadBtn}
+                  >
+                    <i className={isExpanded ? "ti ti-chevron-up" : "ti ti-message-circle"} />
+                    <span>
+                      {isExpanded ? "Hide conversation" : `View thread (${c.comments?.length || 0}) →`}
+                    </span>
+                  </button>
                 </div>
 
                 {/* Expanded Details */}
                 {isExpanded && (
-                  <div style={s.details}>
-                    {/* Basic Info */}
-                    <div style={s.infoGrid}>
-                      <div>
-                        <p style={s.label}>Complainant</p>
-                        <p style={s.value}>{c.user?.name}</p>
-                      </div>
-                      <div>
-                        <p style={s.label}>Category</p>
-                        <p style={s.value}>{c.category}</p>
-                      </div>
-                      <div>
-                        <p style={s.label}>Priority</p>
-                        <p style={{ ...s.value, color: pc.color, fontWeight: "700" }}>
-                          {c.priority}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={s.label}>Submitted</p>
-                        <p style={s.value}>
-                          {new Date(c.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
+                  <div style={styles.expandedSection}>
+                    <div style={styles.descBox}>
+                      <div style={styles.descLabel}>DESCRIPTION</div>
+                      <p style={styles.descText}>{c.description}</p>
                     </div>
 
-                    {/* Description */}
-                    <div style={s.section}>
-                      <p style={s.label}>Description</p>
-                      <p style={s.description}>{c.description}</p>
-                    </div>
-
-                    {/* Customer Rating if available */}
                     {c.rating?.score && (
-                      <div style={{ marginBottom: "1.5rem" }}>
-                        <p style={s.label}>Customer Feedback & Rating</p>
+                      <div style={{ margin: "10px 0" }}>
                         <StarRating rating={c.rating} readonly={true} />
                       </div>
                     )}
 
-                    {/* Attachments */}
                     <AttachmentList attachments={c.attachments} />
 
-                    {/* Discussion Thread */}
-                    <CommentThread 
-                      comments={c.comments} 
-                      onAddComment={(text) => handleAddComment(c._id, text)} 
+                    <CommentThread
+                      comments={c.comments}
+                      onAddComment={(text) => handleAddComment(c._id, text)}
                     />
 
-                    {/* Timeline */}
                     <ActivityTimeline history={c.history} />
-
-                    {/* Status Change */}
-                    <div style={s.section}>
-                      <p style={s.label}>Change Status</p>
-                      <div style={s.statusButtons}>
-                        {STATUS_FLOW.map((status) => (
-                          <button
-                            key={status}
-                            onClick={() => handleStatusChange(c._id, status)}
-                            style={{
-                              ...s.statusBtn,
-                              ...(c.status === status ? s.statusBtnActive : {}),
-                            }}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Edit Fields */}
-                    {!isEditing ? (
-                      <>
-                        {/* Priority Display */}
-                        <div style={s.section}>
-                          <div style={s.sectionHeader}>
-                            <p style={s.label}>Priority</p>
-                            <button
-                              onClick={() => {
-                                setEditingId(c._id);
-                                setEditData({
-                                  priority: c.priority,
-                                  resolutionNote: c.resolutionNote || "",
-                                });
-                              }}
-                              style={s.editBtn}
-                            >
-                              ✏️ Edit Priority & Note
-                            </button>
-                          </div>
-                          <p style={{ ...s.value, color: pc.color, fontWeight: "700" }}>
-                            {c.priority}
-                          </p>
-                        </div>
-
-                        {/* Resolution Note Display */}
-                        <div style={s.section}>
-                          <p style={s.label}>Resolution Note</p>
-                          <p style={s.description}>
-                            {c.resolutionNote || "No notes yet"}
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        {/* Edit Priority */}
-                        <div style={s.section}>
-                          <label style={s.label}>Priority</label>
-                          <select
-                            value={editData.priority}
-                            onChange={(e) =>
-                              setEditData({
-                                ...editData,
-                                priority: e.target.value,
-                              })
-                            }
-                            className="input-field"
-                            style={s.select}
-                          >
-                            <option value="Low" style={s.option}>Low</option>
-                            <option value="Medium" style={s.option}>Medium</option>
-                            <option value="High" style={s.option}>High</option>
-                          </select>
-                        </div>
-
-                        {/* Edit Resolution Note */}
-                        <div style={s.section}>
-                          <label style={s.label}>Resolution Note</label>
-                          <textarea
-                            value={editData.resolutionNote}
-                            onChange={(e) =>
-                              setEditData({
-                                ...editData,
-                                resolutionNote: e.target.value,
-                              })
-                            }
-                            className="input-field"
-                            style={{ height: "100px" }}
-                            placeholder="Add resolution details..."
-                          />
-                        </div>
-
-                        {/* Save/Cancel Buttons */}
-                        <div style={s.buttonGroup}>
-                          <button
-                            onClick={() => handleSaveEdit(c._id)}
-                            style={s.saveBtn}
-                          >
-                            💾 Save
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingId(null);
-                              setEditData({});
-                            }}
-                            style={s.cancelBtn}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </>
-                    )}
                   </div>
                 )}
               </div>
@@ -344,163 +215,160 @@ const AgentComplaints = () => {
 };
 
 const styles = {
-  page: { padding: "2rem", maxWidth: "900px", margin: "0 auto" },
-  title: { margin: "0 0 0.25rem", color: "var(--text-primary)", fontSize: "1.6rem", fontWeight: "800" },
-  title3: { margin: "0", color: "var(--text-primary)", fontSize: "1.15rem", fontWeight: "700" },
-  sub: { margin: "0 0 1.5rem", color: "var(--text-secondary)" },
-  error: {
-    background: "rgba(244, 63, 94, 0.1)",
-    color: "#f43f5e",
-    border: "1px solid rgba(244, 63, 94, 0.2)",
-    padding: "0.75rem",
-    borderRadius: "8px",
-    marginBottom: "1rem",
-    fontSize: "0.88rem"
+  page: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  title: {
+    fontSize: "20px",
+    fontWeight: "500",
+    color: "var(--text-primary)",
+    margin: "0 0 2px",
+  },
+  subtitle: {
+    fontSize: "13px",
+    color: "var(--text-secondary)",
+    margin: 0,
+  },
+  toast: {
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border-strong)",
+    borderLeft: "4px solid var(--resolved)",
+    borderRadius: "var(--radius-lg)",
+    padding: "10px 14px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "13px",
+    color: "var(--text-primary)",
+  },
+  alertError: {
+    background: "var(--urgent-bg)",
+    color: "var(--urgent)",
+    border: "1px solid rgba(224, 36, 36, 0.3)",
+    padding: "10px 14px",
+    borderRadius: "var(--radius-md)",
+    fontSize: "13px",
+  },
+  searchWrap: {
+    position: "relative",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: "12px",
+    top: "50%",
+    transform: "translateY(-50%)",
+    color: "var(--text-muted)",
+    fontSize: "14px",
+  },
+  searchInput: {
+    paddingLeft: "34px",
+    height: "38px",
+  },
+  list: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
   },
   empty: {
-    padding: "3rem",
-    color: "var(--text-secondary)",
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    padding: "48px 16px",
     textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
   },
-
-  // List and cards
-  list: { display: "flex", flexDirection: "column", gap: "1.25rem" },
-  card: {
-    borderRadius: "16px",
-    overflow: "hidden",
-  },
-  cardHeader: {
+  cardRow1: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: "1.25rem 1.5rem",
-    cursor: "pointer",
+    marginBottom: "4px",
+  },
+  ticketId: {
+    fontFamily: "var(--font-mono)",
+    fontSize: "11px",
+    color: "var(--text-muted)",
   },
   cardTitle: {
+    fontSize: "14px",
+    fontWeight: "500",
+    color: "var(--text-primary)",
+    margin: "0 0 6px",
+  },
+  cardMeta: {
     display: "flex",
-    gap: "1rem",
     alignItems: "center",
-    flex: 1,
-  },
-  badge: {
-    padding: "0.2rem 0.65rem",
-    borderRadius: "12px",
-    fontSize: "0.75rem",
-    fontWeight: "700",
-    whiteSpace: "nowrap",
-  },
-
-  // Details
-  details: { padding: "1.5rem", borderTop: "1px solid var(--border-subtle)", background: "rgba(0,0,0,0.08)" },
-  infoGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-    gap: "1rem",
-    marginBottom: "1.5rem",
-  },
-  label: {
-    margin: "0 0 0.35rem",
-    color: "var(--text-muted)",
-    fontSize: "0.75rem",
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em"
-  },
-  value: { margin: "0", color: "var(--text-primary)", fontSize: "0.95rem", fontWeight: "600" },
-  description: {
-    margin: "0",
+    gap: "12px",
+    flexWrap: "wrap",
+    fontSize: "12px",
     color: "var(--text-secondary)",
-    fontSize: "0.92rem",
-    lineHeight: "1.5",
-    padding: "0.8rem 1rem",
-    background: "rgba(255,255,255,0.015)",
-    borderRadius: "8px",
-    border: "1px solid var(--border-subtle)"
   },
-
-  // Sections
-  section: { marginBottom: "1.5rem" },
-  sectionHeader: {
+  metaItem: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+  },
+  cardActionsRow: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "0.5rem",
+    marginTop: "12px",
+    paddingTop: "10px",
+    borderTop: "1px solid var(--border)",
   },
-
-  // Status buttons
-  statusButtons: { display: "flex", gap: "0.5rem", flexWrap: "wrap" },
-  statusBtn: {
-    padding: "0.45rem 1rem",
-    background: "rgba(255,255,255,0.03)",
-    color: "var(--text-secondary)",
-    border: "1px solid var(--border-subtle)",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontSize: "0.85rem",
-    fontWeight: "600",
-    transition: "all 0.2s",
+  statusSelect: {
+    height: "30px",
+    fontSize: "12px",
+    width: "120px",
+    padding: "0 8px",
   },
-  statusBtnActive: {
-    background: "var(--grad-primary)",
-    color: "#fff",
-    border: "1px solid transparent",
-  },
-
-  // Form controls
-  editBtn: {
-    padding: "0.35rem 0.8rem",
-    background: "var(--grad-primary)",
-    color: "#fff",
+  threadBtn: {
+    background: "transparent",
     border: "none",
-    borderRadius: "8px",
+    color: "var(--brand)",
+    fontSize: "13px",
+    fontWeight: "500",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
     cursor: "pointer",
-    fontSize: "0.82rem",
-    fontWeight: "600"
+    padding: 0,
   },
-  select: {
-    cursor: "pointer",
+  expandedSection: {
+    marginTop: "12px",
+    paddingTop: "12px",
+    borderTop: "1px dashed var(--border)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
   },
-  option: {
-    background: "var(--bg-sidebar)",
-    color: "var(--text-primary)"
+  descBox: {
+    background: "var(--bg-hover)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
+    padding: "12px 14px",
   },
-
-  // Buttons
-  buttonGroup: { display: "flex", gap: "0.75rem", marginTop: "1rem" },
-  saveBtn: {
-    flex: 1,
-    padding: "0.7rem",
-    background: "var(--grad-success)",
-    color: "#fff",
-    border: "none",
-    borderRadius: "10px",
-    cursor: "pointer",
+  descLabel: {
+    fontSize: "10px",
+    color: "var(--text-muted)",
+    letterSpacing: "0.08em",
     fontWeight: "600",
-    fontFamily: "var(--font-heading)"
+    marginBottom: "4px",
   },
-  cancelBtn: {
-    flex: 1,
-    padding: "0.7rem",
-    background: "rgba(255,255,255,0.03)",
-    color: "var(--text-secondary)",
-    border: "1px solid var(--border-subtle)",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontFamily: "var(--font-heading)"
+  descText: {
+    fontSize: "13px",
+    color: "var(--text-primary)",
+    lineHeight: "1.6",
+    margin: 0,
   },
-
-  attachmentList:  { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" },
-  attachmentBtn:   { background: "rgba(56, 189, 248, 0.1)", color: "var(--accent-blue)", padding: "0.4rem 0.8rem", borderRadius: "6px", textDecoration: "none", fontSize: "0.85rem", fontWeight: "500", border: "1px solid rgba(56, 189, 248, 0.2)" },
-  
-  timeline:        { display: "flex", flexDirection: "column", gap: "1rem", borderLeft: "2px solid var(--border-subtle)", paddingLeft: "1.2rem", marginLeft: "0.5rem", marginTop: "0.5rem" },
-  timelineItem:    { position: "relative" },
-  timelineDot:     { position: "absolute", left: "-1.55rem", top: "0.3rem", width: "10px", height: "10px", borderRadius: "50%", background: "var(--accent-blue)", border: "2px solid var(--bg-app)" },
-  timelineContent: { background: "rgba(255,255,255,0.01)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-subtle)" },
-  timelineTime:    { fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.2rem" },
-  timelineAction:  { display: "block", color: "var(--text-primary)", fontSize: "0.9rem", marginBottom: "0.25rem" },
-  timelineChanges: { fontSize: "0.85rem", color: "var(--text-secondary)", background: "rgba(255,255,255,0.015)", padding: "0.4rem", borderRadius: "4px", border: "1px solid var(--border-subtle)", marginBottom: "0.4rem" },
-  timelineUser:    { fontSize: "0.8rem", color: "var(--text-muted)", fontStyle: "italic" }
 };
 
 export default AgentComplaints;

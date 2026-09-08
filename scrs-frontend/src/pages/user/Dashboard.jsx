@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { getAllComplaintsAPI } from "../../api";
 import { useAuth } from "../../context";
-import { Spinner } from "../../components";
-import { PageHero, StatStrip, StatusBreakdown, ComplaintCard } from "../../components/dashboard";
-import { STATUS_META } from "../../utils/statusMeta";
+import { Spinner, SLABadge } from "../../components";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -16,9 +15,9 @@ const Dashboard = () => {
     const load = async () => {
       try {
         const res = await getAllComplaintsAPI();
-        setComplaints(res.data.complaints);
+        setComplaints(res.data.complaints || []);
       } catch {
-        setError("Failed to load complaints.");
+        setError("Failed to load dashboard complaints.");
       } finally {
         setLoading(false);
       }
@@ -26,100 +25,279 @@ const Dashboard = () => {
     load();
   }, []);
 
-  const counts = {
-    Open: complaints.filter(c => c.status === "Open").length,
-    "In Progress": complaints.filter(c => c.status === "In Progress").length,
-    Resolved: complaints.filter(c => c.status === "Resolved").length,
-    Closed: complaints.filter(c => c.status === "Closed").length,
+  // Compute greeting based on hour
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
   };
+
+  const todayStr = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   const total = complaints.length;
-  const done = counts["Resolved"] + counts["Closed"];
+  const openCount = complaints.filter((c) => c.status === "Open").length;
+  const inProgressCount = complaints.filter((c) => c.status === "In Progress").length;
+  const resolvedCount = complaints.filter((c) => c.status === "Resolved" || c.status === "Closed").length;
+
+  // SLA breakdown counts
+  const activeComplaints = complaints.filter((c) => c.status === "Open" || c.status === "In Progress");
+  const overdueCount = activeComplaints.filter((c) => {
+    if (c.slaBreached) return true;
+    if (c.slaDeadline && new Date(c.slaDeadline).getTime() < Date.now()) return true;
+    return false;
+  }).length;
+
+  const criticalCount = activeComplaints.filter((c) => {
+    if (!c.slaDeadline || c.slaBreached) return false;
+    const diff = new Date(c.slaDeadline).getTime() - Date.now();
+    return diff > 0 && diff < 4 * 3600000;
+  }).length;
+
+  const onTrackCount = activeComplaints.length - overdueCount - criticalCount;
 
   if (loading) return <Spinner />;
 
-  const statusItems = Object.entries(counts).map(([status, count]) => ({
-    _id: status,
-    count,
-  }));
-
   return (
-    <div style={s.page} className="animate-fade-in">
-      <PageHero
-        name={user?.name}
-        email={user?.email}
-        role="User Portal"
-        accentColor="#38bdf8"
-        badgeText={`${total} Complaint${total !== 1 ? "s" : ""}`}
-        actionLabel="+ Submit Complaint"
-        actionTo="/complaints/new"
-      />
+    <div style={styles.page}>
+      {/* Page Header */}
+      <div style={styles.header}>
+        <div>
+          <h1 style={styles.greeting}>
+            {getGreeting()}, {user?.name || "User"}
+          </h1>
+          <p style={styles.date}>{todayStr}</p>
+        </div>
+        <Link to="/complaints/new" className="btn-primary" style={{ height: "38px" }}>
+          <i className="ti ti-plus" style={{ fontSize: "16px" }} />
+          <span>Submit Complaint</span>
+        </Link>
+      </div>
 
-      {error && <div style={s.error}>{error}</div>}
+      {error && <div style={styles.errorAlert}>{error}</div>}
 
-      <StatStrip
-        stats={[
-          { label: "Total", value: total, accent: "var(--accent-blue)" },
-          { label: "Open", value: counts["Open"], accent: "#60a5fa" },
-          { label: "In Progress", value: counts["In Progress"], accent: "#fbbf24" },
-          { label: "Resolved", value: counts["Resolved"], accent: "#34d399" },
-        ]}
-        total={total}
-      />
-
-      <div style={s.columns} className="columns-layout">
-        {/* LEFT — recent complaints */}
-        <div style={s.mainPanel} className="glass-panel">
-          <div style={s.panelHead}>
-            <h2 style={s.panelTitle}>Recent Complaints</h2>
-            {total > 5 && (
-              <Link to="/complaints" style={s.viewAll}>View all {total} →</Link>
-            )}
+      {/* SLA Overview Bar */}
+      {activeComplaints.length > 0 && (
+        <div style={styles.slaBar}>
+          <div style={styles.slaBarLeft}>
+            <i className="ti ti-clock-exclamation" style={{ fontSize: "16px", color: "var(--brand)" }} />
+            <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>SLA Status:</span>
           </div>
+          <div style={styles.slaCounts}>
+            {overdueCount > 0 && (
+              <span style={{ color: "var(--urgent)", fontWeight: 500 }}>
+                🔴 {overdueCount} Overdue
+              </span>
+            )}
+            {criticalCount > 0 && (
+              <span style={{ color: "var(--open)", fontWeight: 500 }}>
+                🟡 {criticalCount} Critical (&lt;4h)
+              </span>
+            )}
+            <span style={{ color: "var(--resolved)", fontWeight: 500 }}>
+              🟢 {Math.max(0, onTrackCount)} On track
+            </span>
+          </div>
+        </div>
+      )}
 
-          {total === 0 ? (
-            <div style={s.emptyState}>
-              <p style={s.emptyIcon}>📭</p>
-              <p style={s.emptyText}>No complaints yet</p>
-              <Link to="/complaints/new" style={s.emptyLink}>
-                Submit your first complaint →
-              </Link>
-            </div>
-          ) : (
-            <div style={s.cardList}>
-              {complaints.slice(0, 5).map(c => (
-                <ComplaintCard key={c._id} complaint={c} />
-              ))}
-            </div>
-          )}
+      {/* 4 Stat Cards */}
+      <div style={styles.statsGrid}>
+        <div className="stat-card" style={{ borderTop: "3px solid var(--brand)" }}>
+          <div className="stat-card-num">{total}</div>
+          <div className="stat-card-label">Total Complaints</div>
+          <div className="stat-card-trend" style={{ color: "var(--brand)" }}>
+            <i className="ti ti-ticket" /> All submitted tickets
+          </div>
         </div>
 
-        {/* RIGHT — status breakdown + progress */}
-        <div style={s.sidePanel}>
-          <StatusBreakdown
-            title="Status Breakdown"
-            items={statusItems}
-            total={total}
-          />
+        <div className="stat-card" style={{ borderTop: "3px solid var(--open)" }}>
+          <div className="stat-card-num">{openCount}</div>
+          <div className="stat-card-label">Open Tickets</div>
+          <div className="stat-card-trend" style={{ color: "var(--open)" }}>
+            <i className="ti ti-clock" /> Awaiting assignment
+          </div>
+        </div>
 
-          <div style={s.summaryCard} className="glass-panel">
-            <h3 style={s.sideTitle}>My Progress</h3>
-            <div style={s.progressRow}>
-              <span style={s.progressLabel}>Resolution rate</span>
-              <span style={s.progressPct}>
-                {total ? `${Math.round((done / total) * 100)}%` : "—"}
-              </span>
+        <div className="stat-card" style={{ borderTop: "3px solid var(--progress)" }}>
+          <div className="stat-card-num">{inProgressCount}</div>
+          <div className="stat-card-label">In Progress</div>
+          <div className="stat-card-trend" style={{ color: "var(--progress)" }}>
+            <i className="ti ti-tool" /> Active support
+          </div>
+        </div>
+
+        <div className="stat-card" style={{ borderTop: "3px solid var(--resolved)" }}>
+          <div className="stat-card-num">{resolvedCount}</div>
+          <div className="stat-card-label">Resolved / Closed</div>
+          <div className="stat-card-trend" style={{ color: "var(--resolved)" }}>
+            <i className="ti ti-check" /> Completed
+          </div>
+        </div>
+      </div>
+
+      {/* Main Two Columns (65% / 35%) */}
+      <div style={styles.twoCol}>
+        {/* Left Column (65%): Recent Complaints */}
+        <div style={styles.leftCol}>
+          <div className="panel">
+            <div className="panel-header">
+              <span className="panel-title">Recent Complaints</span>
+              <Link to="/complaints" style={styles.viewAllLink}>
+                View all ({total}) →
+              </Link>
             </div>
-            <div style={s.bigBar}>
-              <div style={{
-                ...s.bigFill,
-                width: total ? `${(done / total) * 100}%` : "0%",
-              }} />
+            <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {complaints.length === 0 ? (
+                <div style={styles.emptyState}>
+                  <i className="ti ti-inbox" style={{ fontSize: "42px", color: "var(--text-muted)", marginBottom: "8px" }} />
+                  <div style={{ color: "var(--text-primary)", fontWeight: 500, marginBottom: "4px" }}>
+                    No complaints yet
+                  </div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "16px" }}>
+                    When you submit a complaint, it will appear here.
+                  </div>
+                  <Link to="/complaints/new" style={{ color: "var(--brand)", fontWeight: 500, fontSize: "13px" }}>
+                    Submit your first complaint →
+                  </Link>
+                </div>
+              ) : (
+                complaints.slice(0, 5).map((c) => {
+                  const priorityClass =
+                    c.priority === "high" || c.priority === "critical"
+                      ? "complaint-card-high"
+                      : c.priority === "low"
+                      ? "complaint-card-low"
+                      : "complaint-card-medium";
+
+                  const statusBadgeClass =
+                    c.status === "Open"
+                      ? "badge-open"
+                      : c.status === "In Progress"
+                      ? "badge-progress"
+                      : c.status === "Resolved"
+                      ? "badge-resolved"
+                      : "badge-closed";
+
+                  return (
+                    <div
+                      key={c._id}
+                      className={`complaint-card ${priorityClass}`}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => navigate("/complaints")}
+                    >
+                      <div style={styles.cardRow1}>
+                        <span style={styles.ticketId}>
+                          #SCR-{c._id.toString().slice(-4).toUpperCase()} · {c.category} ·{" "}
+                          {new Date(c.createdAt).toLocaleDateString()}
+                        </span>
+                        <span className={`badge-status ${statusBadgeClass}`}>
+                          <span className="badge-dot" />
+                          <span>{c.status}</span>
+                        </span>
+                      </div>
+
+                      <div style={styles.cardTitle}>{c.title}</div>
+
+                      <div style={styles.cardMetaRow}>
+                        {c.assignedTo ? (
+                          <span style={styles.assignedTo}>
+                            <i className="ti ti-user-circle" /> Assigned to {c.assignedTo.name}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+                            Unassigned
+                          </span>
+                        )}
+                        <SLABadge
+                          deadline={c.slaDeadline}
+                          breached={c.slaBreached}
+                          status={c.status}
+                          resolvedAt={c.resolvedAt}
+                        />
+                        {c.rating?.score && (
+                          <span style={{ color: "var(--open)", fontSize: "12px", fontWeight: 600 }}>
+                            ★ {c.rating.score}/5
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
-            <p style={s.progressSub}>
-              {done} of {total} complaint{total !== 1 ? "s" : ""} resolved or closed
-            </p>
-            <div style={s.divider} />
-            <Link to="/complaints" className="btn-primary" style={s.allBtn}>📋 View All Complaints</Link>
+          </div>
+        </div>
+
+        {/* Right Column (35%): Stacked Panels */}
+        <div style={styles.rightCol}>
+          {/* Status Breakdown Panel */}
+          <div className="panel" style={{ marginBottom: "16px" }}>
+            <div className="panel-header">
+              <span className="panel-title">Status Breakdown</span>
+            </div>
+            <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {[
+                { label: "Open", count: openCount, color: "var(--open)" },
+                { label: "In Progress", count: inProgressCount, color: "var(--progress)" },
+                { label: "Resolved", count: resolvedCount, color: "var(--resolved)" },
+              ].map((item) => {
+                const pct = total > 0 ? (item.count / total) * 100 : 0;
+                return (
+                  <div key={item.label}>
+                    <div style={styles.breakdownRow}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ ...styles.breakdownDot, background: item.color }} />
+                        <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>{item.label}</span>
+                      </div>
+                      <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
+                        {item.count}
+                      </span>
+                    </div>
+                    <div style={styles.barTrack}>
+                      <div style={{ ...styles.barFill, width: `${pct}%`, background: item.color }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Quick Actions Panel */}
+          <div className="panel">
+            <div className="panel-header">
+              <span className="panel-title">Quick Actions</span>
+            </div>
+            <div>
+              <Link to="/complaints/new" style={styles.actionRow}>
+                <div style={styles.actionLeft}>
+                  <i className="ti ti-circle-plus" style={{ fontSize: "16px", color: "var(--brand)" }} />
+                  <span>Submit new complaint</span>
+                </div>
+                <i className="ti ti-chevron-right" style={styles.actionChevron} />
+              </Link>
+
+              <Link to="/complaints" style={styles.actionRow}>
+                <div style={styles.actionLeft}>
+                  <i className="ti ti-clipboard" style={{ fontSize: "16px", color: "var(--brand)" }} />
+                  <span>View all my complaints</span>
+                </div>
+                <i className="ti ti-chevron-right" style={styles.actionChevron} />
+              </Link>
+
+              <Link to="/complaints" style={{ ...styles.actionRow, borderBottom: "none" }}>
+                <div style={styles.actionLeft}>
+                  <i className="ti ti-star" style={{ fontSize: "16px", color: "var(--open)" }} />
+                  <span>Rate resolved complaints</span>
+                </div>
+                <i className="ti ti-chevron-right" style={styles.actionChevron} />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -127,30 +305,162 @@ const Dashboard = () => {
   );
 };
 
-const s = {
-  page: { padding: "2rem", maxWidth: "1600px", margin: "0 auto", fontFamily: "inherit" },
-  error: { background: "rgba(244, 63, 94, 0.1)", color: "#f43f5e", border: "1px solid rgba(244, 63, 94, 0.2)", padding: "0.75rem", borderRadius: "8px", marginBottom: "1rem" },
-  columns: { display: "grid", gridTemplateColumns: "1fr 340px", gap: "1.5rem", alignItems: "start" },
-  mainPanel: { padding: "1.75rem", boxShadow: "none" },
-  panelHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" },
-  panelTitle: { margin: 0, color: "var(--text-primary)", fontSize: "1.2rem", fontWeight: "800" },
-  viewAll: { color: "var(--accent-blue)", fontSize: "0.88rem", textDecoration: "none", fontWeight: "600", transition: "color 0.2s" },
-  emptyState: { textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" },
-  emptyIcon: { fontSize: "3rem", margin: "0 0 0.75rem" },
-  emptyText: { margin: 0, fontSize: "1rem", fontWeight: "600", color: "var(--text-secondary)" },
-  emptyLink: { display: "inline-block", marginTop: "0.75rem", color: "var(--accent-blue)", fontWeight: "600", textDecoration: "none", fontSize: "0.9rem" },
-  cardList: { display: "flex", flexDirection: "column", gap: "0.85rem" },
-  sidePanel: { display: "flex", flexDirection: "column", gap: "1rem" },
-  sideTitle: { margin: "0 0 1.25rem", color: "var(--text-primary)", fontSize: "1.05rem", fontWeight: "800" },
-  summaryCard: { background: "linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(14, 165, 233, 0.03) 100%)", border: "1px solid rgba(14, 165, 233, 0.2)", padding: "1.5rem" },
-  progressRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" },
-  progressLabel: { fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: "500" },
-  progressPct: { fontSize: "1.2rem", fontWeight: "800", color: "var(--accent-blue)", fontFamily: "var(--font-heading)" },
-  bigBar: { height: "8px", background: "rgba(255,255,255,0.05)", borderRadius: "8px", overflow: "hidden", marginBottom: "0.6rem" },
-  bigFill: { height: "100%", background: "var(--grad-primary)", borderRadius: "8px", transition: "width 0.4s ease" },
-  progressSub: { margin: "0 0 1.25rem", fontSize: "0.8rem", color: "var(--text-secondary)" },
-  divider: { height: "1px", background: "var(--border-subtle)", marginBottom: "1.25rem" },
-  allBtn: { display: "flex", width: "100%" },
+const styles = {
+  page: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  greeting: {
+    fontSize: "20px",
+    fontWeight: "500",
+    color: "var(--text-primary)",
+    margin: 0,
+  },
+  date: {
+    fontSize: "13px",
+    color: "var(--text-secondary)",
+    margin: "4px 0 0",
+  },
+  errorAlert: {
+    background: "var(--urgent-bg)",
+    color: "var(--urgent)",
+    border: "1px solid rgba(224, 36, 36, 0.3)",
+    padding: "10px 14px",
+    borderRadius: "var(--radius-md)",
+    fontSize: "13px",
+  },
+  slaBar: {
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    padding: "12px 18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+  slaBarLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "13px",
+  },
+  slaCounts: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    fontSize: "13px",
+  },
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+    gap: "12px",
+  },
+  twoCol: {
+    display: "flex",
+    gap: "16px",
+    flexWrap: "wrap",
+  },
+  leftCol: {
+    flex: "1 1 60%",
+    minWidth: "320px",
+  },
+  rightCol: {
+    flex: "1 1 32%",
+    minWidth: "260px",
+  },
+  viewAllLink: {
+    fontSize: "12px",
+    color: "var(--brand)",
+    fontWeight: "500",
+  },
+  emptyState: {
+    padding: "36px 16px",
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  cardRow1: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "6px",
+  },
+  ticketId: {
+    fontFamily: "var(--font-mono)",
+    fontSize: "11px",
+    color: "var(--text-muted)",
+  },
+  cardTitle: {
+    fontSize: "15px",
+    fontWeight: "500",
+    color: "var(--text-primary)",
+    marginBottom: "8px",
+  },
+  cardMetaRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+  assignedTo: {
+    fontSize: "12px",
+    color: "var(--text-secondary)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+  },
+  breakdownRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "4px",
+  },
+  breakdownDot: {
+    width: "6px",
+    height: "6px",
+    borderRadius: "50%",
+    display: "inline-block",
+  },
+  barTrack: {
+    height: "4px",
+    background: "var(--bg-base)",
+    borderRadius: "2px",
+    overflow: "hidden",
+  },
+  barFill: {
+    height: "100%",
+    borderRadius: "2px",
+    transition: "width 300ms ease",
+  },
+  actionRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "11px 16px",
+    borderBottom: "1px solid var(--border)",
+    transition: "background 120ms ease",
+    textDecoration: "none",
+  },
+  actionLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    fontSize: "13px",
+    color: "var(--text-primary)",
+  },
+  actionChevron: {
+    fontSize: "12px",
+    color: "var(--text-muted)",
+  },
 };
 
 export default Dashboard;

@@ -64,7 +64,7 @@ const getDashboard = async (req, res) => {
 /** GET /api/admin/users — list all regular users with complaint counts */
 const getAllUsers = async (req, res) => {
   const users = await User.aggregate([
-    { $match: { role: 'user' } },
+    { $match: { role: ROLES.USER } },
     {
       $lookup: {
         from: 'complaints',
@@ -84,7 +84,7 @@ const getAllUsers = async (req, res) => {
 /** GET /api/admin/agents — list all agents with complaint counts */
 const getAllAgents = async (req, res) => {
   const agents = await User.aggregate([
-    { $match: { role: 'agent' } },
+    { $match: { role: ROLES.AGENT } },
     {
       $lookup: {
         from: 'complaints',
@@ -141,7 +141,7 @@ const assignComplaint = async (req, res) => {
 
   const agent = await User.findById(agentId);
   if (!agent) throw new AppError('Agent not found', 404);
-  if (agent.role !== 'agent') {
+  if (agent.role !== ROLES.AGENT) {
     throw new AppError('The provided ID does not belong to an agent', 400);
   }
 
@@ -166,7 +166,7 @@ const generateAgentSecurityCode = async (req, res) => {
 
   const user = await User.findById(id);
   if (!user) throw new AppError('User not found', 404);
-  if (user.role !== 'agent') {
+  if (user.role !== ROLES.AGENT) {
     throw new AppError('This user is not an agent', 400);
   }
 

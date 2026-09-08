@@ -6,14 +6,15 @@ const seedAdmin = async () => {
   const User = require('./models/User');
   const adminExists = await User.findOne({ role: 'admin' });
   if (!adminExists) {
+    const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'adminpassword123';
     console.log('No admin user found. Auto-seeding default system administrator...');
     await User.create({
       name: 'System Administrator',
-      email: 'admin@scrs.com',
-      password: 'adminpassword123',
+      email: process.env.ADMIN_DEFAULT_EMAIL || 'admin@scrs.com',
+      password: defaultPassword,
       role: 'admin'
     });
-    console.log('Default administrator account (admin@scrs.com) created!');
+    console.log(`Default administrator account created! Set ADMIN_DEFAULT_EMAIL/ADMIN_DEFAULT_PASSWORD in .env`);
   }
 };
 

@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from "react";
 
-/**
- * SLABadge component
- * Displays live SLA countdown timer and breach warnings.
- */
 const SLABadge = ({ deadline, breached, status, resolvedAt }) => {
   const [timeLeft, setTimeLeft] = useState("");
-  const [isBreachedNow, setIsBreachedNow] = useState(false);
-  const [isUrgent, setIsUrgent] = useState(false);
+  const [slaState, setSlaState] = useState("ontrack"); // 'overdue' | 'critical' | 'warning' | 'ontrack'
 
   useEffect(() => {
     if (!deadline) return;
@@ -21,26 +16,27 @@ const SLABadge = ({ deadline, breached, status, resolvedAt }) => {
       const diff = target - now;
 
       if (diff <= 0) {
-        setIsBreachedNow(true);
-        setTimeLeft("SLA Breached");
+        setSlaState("overdue");
+        setTimeLeft("SLA Overdue");
         return;
       }
 
-      setIsBreachedNow(false);
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
       if (hours < 4) {
-        setIsUrgent(true);
+        setSlaState("critical");
+      } else if (hours < 12) {
+        setSlaState("warning");
       } else {
-        setIsUrgent(false);
+        setSlaState("ontrack");
       }
 
       setTimeLeft(`${hours}h ${minutes}m left`);
     };
 
     calculateTime();
-    const interval = setInterval(calculateTime, 60000); // update every minute
+    const interval = setInterval(calculateTime, 60000);
     return () => clearInterval(interval);
   }, [deadline, status]);
 
@@ -51,94 +47,53 @@ const SLABadge = ({ deadline, breached, status, resolvedAt }) => {
   if (isClosed) {
     if (breached) {
       return (
-        <span style={styles.badgeBreached} title="Resolved after target SLA deadline">
-          ⚠️ SLA Breached
+        <span className="badge-status badge-sla-overdue" title="Resolved after SLA deadline">
+          <i className="ti ti-clock-x" style={{ fontSize: "12px" }} />
+          <span>SLA Overdue</span>
         </span>
       );
     }
     return (
-      <span style={styles.badgeSuccess} title="Resolved within target SLA deadline">
-        ✓ Within SLA
+      <span className="badge-status badge-sla-ontrack" title="Resolved within target SLA window">
+        <i className="ti ti-clock-check" style={{ fontSize: "12px" }} />
+        <span>Resolved on track</span>
       </span>
     );
   }
 
-  if (isBreachedNow || breached) {
+  if (breached || slaState === "overdue") {
     return (
-      <span style={styles.badgeBreached} title="Target SLA deadline has passed">
-        ⚠️ SLA Breached
+      <span className="badge-status badge-sla-overdue" title="Target SLA deadline missed">
+        <i className="ti ti-clock-x" style={{ fontSize: "12px" }} />
+        <span>{timeLeft || "SLA Overdue"}</span>
       </span>
     );
   }
 
-  if (isUrgent) {
+  if (slaState === "critical") {
     return (
-      <span style={styles.badgeUrgent} title="Approaching SLA deadline">
-        🔥 {timeLeft}
+      <span className="badge-status badge-sla-critical" title="Critical SLA deadline approaching">
+        <i className="ti ti-clock-hour-4" style={{ fontSize: "12px" }} />
+        <span>{timeLeft}</span>
+      </span>
+    );
+  }
+
+  if (slaState === "warning") {
+    return (
+      <span className="badge-status badge-sla-warning" title="SLA deadline approaching">
+        <i className="ti ti-clock" style={{ fontSize: "12px" }} />
+        <span>{timeLeft}</span>
       </span>
     );
   }
 
   return (
-    <span style={styles.badgeNormal} title="Time remaining before target resolution deadline">
-      ⏱️ {timeLeft}
+    <span className="badge-status badge-sla-ontrack" title="Within standard target resolution window">
+      <i className="ti ti-clock-check" style={{ fontSize: "12px" }} />
+      <span>{timeLeft}</span>
     </span>
   );
-};
-
-const styles = {
-  badgeNormal: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.25rem",
-    background: "rgba(56, 189, 248, 0.12)",
-    color: "var(--accent-blue, #38bdf8)",
-    border: "1px solid rgba(56, 189, 248, 0.3)",
-    padding: "0.2rem 0.6rem",
-    borderRadius: "20px",
-    fontSize: "0.75rem",
-    fontWeight: "700",
-    letterSpacing: "0.02em",
-  },
-  badgeUrgent: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.25rem",
-    background: "rgba(245, 158, 11, 0.15)",
-    color: "#fbbf24",
-    border: "1px solid rgba(245, 158, 11, 0.35)",
-    padding: "0.2rem 0.6rem",
-    borderRadius: "20px",
-    fontSize: "0.75rem",
-    fontWeight: "800",
-    letterSpacing: "0.02em",
-  },
-  badgeBreached: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.25rem",
-    background: "rgba(244, 63, 94, 0.15)",
-    color: "#f43f5e",
-    border: "1px solid rgba(244, 63, 94, 0.35)",
-    padding: "0.2rem 0.6rem",
-    borderRadius: "20px",
-    fontSize: "0.75rem",
-    fontWeight: "800",
-    letterSpacing: "0.02em",
-  },
-  badgeSuccess: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.25rem",
-    background: "rgba(16, 185, 129, 0.12)",
-    color: "#10b981",
-    border: "1px solid rgba(16, 185, 129, 0.3)",
-    padding: "0.2rem 0.6rem",
-    borderRadius: "20px",
-    fontSize: "0.75rem",
-    fontWeight: "700",
-    letterSpacing: "0.02em",
-  },
 };
 
 export default SLABadge;
