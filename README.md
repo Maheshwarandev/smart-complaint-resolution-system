@@ -45,7 +45,7 @@ A full-stack **MERN** enterprise service desk and complaint resolution platform 
 * **Safe Delivery**: Gracefully falls back to local console preview mode when SMTP credentials are not configured.
 
 ### 3. 🤖 Smart Auto-Assignment & Load Balancer
-* **Workload-Aware Routing (`autoAssign.js`)**: Evaluates active ticket queues (`Open` + `In Progress`) across all support agents (`role: 'agent'`).
+* **Workload-Aware Routing (`autoAssign.js`)**: Evaluates active ticket queues (`Open` + `In Progress`) across all support agents.
 * **Instant Load Balancing**: Automatically routes new complaints to the least-busy agent, moves status to `In Progress`, records the assignment in the audit trail, and notifies the agent.
 
 ### 4. 💬 Interactive Conversation & Discussion Threads
@@ -61,7 +61,7 @@ A full-stack **MERN** enterprise service desk and complaint resolution platform 
 * **Animated Dropdown**: Type-specific icons (⚡ assignment, 💬 comment, ⚠️ SLA warning, ⭐ rating) with relative timestamps and "Mark all as read".
 
 ### 7. 🛡️ Audit Trail & Activity Timeline History
-* **Complete Chronological History (`ActivityTimeline.jsx`)**: Tracks previous value $\rightarrow$ new value for status changes, priority shifts, agent assignments, and resolution notes.
+* **Complete Chronological History (`ActivityTimeline.jsx`)**: Tracks previous value → new value for status changes, priority shifts, agent assignments, and resolution notes.
 * **Accountability Stamping**: Records timestamp, performer name, and system/user/agent/admin role for every event.
 
 ### 8. 📊 Advanced Analytics, Search & CSV Reports
@@ -115,98 +115,115 @@ A full-stack **MERN** enterprise service desk and complaint resolution platform 
 
 ```
 scrs/
-├── TEST_CREDENTIALS_AND_DATA.txt   # Complete pre-seeded test accounts & complaints summary
 ├── README.md                       # Comprehensive enterprise documentation
 │
 ├── scrs-frontend/                  # React + Vite Client Application
 │   ├── index.html                  # HTML entry with Google Fonts & Tabler Icons CDN
-│   ├── src/
-│   │   ├── api/                    # Consolidated Axios client & modular endpoints
-│   │   │   ├── auth.js             # Login, register, profile update APIs
-│   │   │   ├── complaints.js       # Complaints CRUD, comments, ratings APIs
-│   │   │   ├── admin.js            # Dashboard stats, user & agent management APIs
-│   │   │   ├── notifications.js    # Notification fetching and mark-as-read APIs
-│   │   │   └── index.js            # Barrel export for API client
-│   │   ├── components/             # Reusable UI components
-│   │   │   ├── ActivityTimeline.jsx# Chronological audit history trail
-│   │   │   ├── AttachmentList.jsx  # Cloudinary file attachment list
-│   │   │   ├── CommentThread.jsx   # Interactive conversation thread
-│   │   │   ├── ConfirmModal.jsx    # Action confirmation dialog
-│   │   │   ├── MainLayout.jsx      # Topbar + collapsible sidebar layout shell
-│   │   │   ├── Navbar.jsx          # Topbar with active dot, theme toggle, user chip
-│   │   │   ├── NotificationBell.jsx# In-app notification center with unread badge
-│   │   │   ├── ProtectedRoute.jsx  # RBAC route authorization guard
-│   │   │   ├── Sidebar.jsx         # Navigation sidebar with role-filtered links
-│   │   │   ├── SLABadge.jsx        # Live countdown timer and SLA breach badge
-│   │   │   ├── Spinner.jsx         # Animated loading spinner
-│   │   │   ├── StarRating.jsx      # Interactive 5-star rating & CSAT feedback
-│   │   │   └── index.js            # Barrel export
-│   │   ├── context/                # Global React context providers
-│   │   │   ├── AuthContext.jsx     # Authentication state & token persistence
-│   │   │   ├── ThemeContext.jsx    # Theme state (Dark/Light)
-│   │   │   └── index.js
-│   │   ├── pages/                  # Route views
-│   │   │   ├── admin/              # Admin dashboard, complaints, users, agents
-│   │   │   │   ├── AdminDashboard.jsx
-│   │   │   │   ├── ManageComplaints.jsx
-│   │   │   │   ├── ManageUsers.jsx
-│   │   │   │   └── ManageAgents.jsx
-│   │   │   ├── agent/              # Agent queue and complaint management
-│   │   │   │   ├── AgentDashboard.jsx
-│   │   │   │   └── AgentComplaints.jsx
-│   │   │   ├── auth/               # Authentication views
-│   │   │   │   ├── Login.jsx       # 2-column login with quick demo credentials
-│   │   │   │   └── Register.jsx    # Registration with password strength meter
-│   │   │   ├── user/               # Standard user portals
-│   │   │   │   ├── Dashboard.jsx   # User dashboard with SLA overview & stats
-│   │   │   │   ├── MyComplaints.jsx# User complaint list with priority borders
-│   │   │   │   └── SubmitComplaint.jsx # Drag-drop complaint submission
-│   │   │   └── Profile.jsx         # User profile update & Cloudinary avatar
-│   │   ├── utils/                  # Client helper utilities
-│   │   │   └── csvExporter.js      # Universal CSV report generator
-│   │   ├── constants.js            # Shared system roles, categories, priorities
-│   │   ├── App.jsx                 # Route definitions & role-based redirects
-│   │   ├── main.jsx                # React DOM mount root
-│   │   └── index.css               # Design tokens, variables & base component styles
-│   └── package.json
+│   └── src/
+│       ├── api/                    # Axios client & modular API endpoints
+│       │   ├── client.js           # Axios instance with JWT interceptor & 401 handler
+│       │   ├── auth.js             # Login, register, profile APIs
+│       │   ├── complaints.js       # Complaints CRUD, comments, ratings APIs
+│       │   ├── admin.js            # Dashboard stats, user & agent management APIs
+│       │   ├── notifications.js    # Notification fetching and mark-as-read APIs
+│       │   └── index.js            # Barrel export — one import for all APIs
+│       ├── components/             # Reusable UI components
+│       │   ├── ActivityTimeline.jsx  # Chronological audit history trail
+│       │   ├── AttachmentList.jsx    # Cloudinary file attachment list
+│       │   ├── CommentThread.jsx     # Interactive conversation thread
+│       │   ├── ConfirmModal.jsx      # Action confirmation dialog
+│       │   ├── ErrorBoundary.jsx     # React crash boundary
+│       │   ├── MainLayout.jsx        # Topbar + collapsible sidebar layout shell
+│       │   ├── Navbar.jsx            # Topbar with theme toggle & notification bell
+│       │   ├── NotificationBell.jsx  # In-app notification center with unread badge
+│       │   ├── ProtectedRoute.jsx    # RBAC route authorization guard
+│       │   ├── Sidebar.jsx           # Navigation sidebar with role-filtered links
+│       │   ├── SLABadge.jsx          # Live countdown timer and SLA breach badge
+│       │   ├── StarRating.jsx        # Interactive 5-star rating & CSAT feedback
+│       │   └── index.jsx             # Barrel export + inline Spinner component
+│       ├── context/                # Global React context providers
+│       │   ├── AppContext.jsx      # Merged Auth + Theme context (state & providers)
+│       │   └── index.js            # Barrel export — one import for all contexts
+│       ├── pages/                  # Route views (organized by role)
+│       │   ├── admin/              # Admin-only views
+│       │   │   ├── AdminDashboard.jsx
+│       │   │   ├── ManageComplaints.jsx
+│       │   │   ├── ManageUsers.jsx
+│       │   │   └── ManageAgents.jsx
+│       │   ├── agent/              # Agent-only views
+│       │   │   ├── AgentDashboard.jsx
+│       │   │   └── AgentComplaints.jsx
+│       │   ├── auth/               # Public authentication views
+│       │   │   ├── Login.jsx       # Login with agent security code field
+│       │   │   └── Register.jsx    # Registration with password strength meter
+│       │   ├── user/               # Standard user portals
+│       │   │   ├── Dashboard.jsx
+│       │   │   ├── MyComplaints.jsx
+│       │   │   └── SubmitComplaint.jsx
+│       │   └── Profile.jsx         # Shared profile page (all roles)
+│       ├── utils/                  # Pure helper utilities (no UI, no React)
+│       │   ├── complaintsHelpers.js  # Shared getPriorityClass & getStatusBadgeClass
+│       │   └── csvExporter.js        # Universal CSV report generator
+│       ├── constants.js            # Shared system roles, categories, priorities
+│       ├── App.jsx                 # Route definitions & role-based redirects
+│       ├── main.jsx                # React DOM mount root
+│       └── index.css               # Design tokens, variables & base component styles
 │
 └── scrs-backend/                   # Node.js + Express REST API
-    ├── config/                     # Database connection & Cloudinary setup
-    │   ├── db.js                   # Mongoose connection with IPv4/DNS fallback
-    │   └── cloudinary.js           # Cloudinary storage engine
+    ├── config/
+    │   └── db.js                   # Mongoose connection with IPv4/DNS fallback
     ├── controllers/                # Business logic handlers
-    │   ├── authController.js       # Authentication & user profile logic
+    │   ├── authController.js       # Authentication & profile logic
     │   ├── complaintController.js  # Complaint CRUD, SLA, email triggers & comments
-    │   ├── adminController.js      # System analytics, role updates & user deletion
-    │   └── notificationController.js # Notification retrieval & read state logic
-    ├── middleware/                 # Express middleware
-    │   ├── auth.js                 # JWT verification & RBAC authorization
-    │   └── upload.js               # Multer file upload handler
-    ├── models/                     # Mongoose data schemas
-    │   ├── User.js                 # User schema with bcrypt password hashing
+    │   ├── adminController.js      # System analytics, role updates & user management
+    │   └── notificationController.js # Notification retrieval & read state
+    ├── middleware/
+    │   ├── authMiddleware.js       # JWT verification & RBAC authorization
+    │   └── uploadMiddleware.js     # Multer file upload handler (memory storage)
+    ├── models/
+    │   ├── User.js                 # User schema with bcrypt & security code
     │   ├── Complaint.js            # Complaint schema with SLA, comments, history
     │   └── Notification.js         # In-app notification schema
-    ├── routes/                     # API route declarations
+    ├── routes/
     │   ├── authRoutes.js           # /api/auth
     │   ├── complaintRoutes.js      # /api/complaints
     │   ├── adminRoutes.js          # /api/admin
     │   └── notificationRoutes.js   # /api/notifications
-    ├── utils/                      # Core backend utilities
+    ├── utils/
     │   ├── autoAssign.js           # Least-busy agent load balancer
-    │   ├── emailService.js         # Nodemailer email dispatcher & HTML templates
-    │   ├── constants.js            # Roles, priorities, SLA hours, categories
-    │   └── validators.js           # Request payload sanitization & validation
-    ├── app.js                      # Express application setup & middleware mounting
-    ├── server.js                   # Server entry point
-    ├── seed_testing_dataset.js     # Testing dataset generator (10 users, 6 agents, 2 admins, 20 tickets)
+    │   ├── cloudinary.js           # Cloudinary config + upload helper (merged)
+    │   ├── emailService.js         # Nodemailer dispatcher & HTML email templates
+    │   ├── constants.js            # Roles, priorities, SLA hours, statuses, categories
+    │   ├── errorHandler.js         # AppError class, asyncHandler & global error middleware
+    │   └── validators.js           # Input sanitization & validation functions
+    ├── app.js                      # Express app setup, CORS, rate limiting & routes
+    ├── server.js                   # Server entry — DB connect, admin seed, listen
+    ├── seed_demo_data.js           # Quick demo seed (small dataset)
+    ├── seed_testing_dataset.js     # Full test dataset (10 users, 6 agents, 2 admins, 20 tickets)
     └── package.json
 ```
 
 ---
 
+## 🔧 Code Quality & Architecture
+
+### Refactoring Applied (Sept 2026)
+| Change | Details |
+|--------|---------|
+| **Merged Contexts** | `AuthContext.jsx` + `ThemeContext.jsx` → single `AppContext.jsx` |
+| **Merged Cloudinary** | `config/cloudinary.js` + `utils/uploadHelper.js` → `utils/cloudinary.js` |
+| **Extracted Shared Helpers** | `getPriorityClass` + `getStatusBadgeClass` extracted to `utils/complaintsHelpers.js` (were copy-pasted in 3 files) |
+| **Inlined Spinner** | `Spinner.jsx` (17 lines) inlined into `components/index.jsx` barrel |
+| **Dead Code Removed** | Unused `handleLogout` in Navbar, dead `getComplaintByIdAPI` & `getComplaintStatsAPI` in frontend API, legacy `/admin` duplicate route |
+| **Constants Consistency** | All hardcoded `'admin'`/`'agent'`/`'user'` strings replaced with `ROLES.*` constants throughout backend |
+| **asyncHandler Consistency** | `notificationController` unified to use `asyncHandler` like all other controllers |
+| **Security** | Admin seed password moved to `process.env.ADMIN_DEFAULT_PASSWORD` |
+
+---
+
 ## 🔑 Pre-Seeded Testing Accounts & Credentials
 
-The database is pre-seeded with **10 Users**, **6 Support Agents**, **2 Admins**, and **20 Enterprise Complaints**. Detailed credentials can also be found in [`TEST_CREDENTIALS_AND_DATA.txt`](TEST_CREDENTIALS_AND_DATA.txt).
+The database is pre-seeded with **10 Users**, **6 Support Agents**, **2 Admins**, and **20 Enterprise Complaints**.
 
 ### 1. 🛡️ Administrators (Full System Access)
 | Name | Email | Password | Role |
@@ -253,7 +270,7 @@ The database is pre-seeded with **10 Users**, **6 Support Agents**, **2 Admins**
 
 ### 🔧 1. Backend Setup
 
-1. Open a terminal and navigate to `scrs-backend`:
+1. Navigate to `scrs-backend` and install dependencies:
    ```powershell
    cd scrs-backend
    npm install
@@ -266,15 +283,20 @@ The database is pre-seeded with **10 Users**, **6 Support Agents**, **2 Admins**
    MONGO_URI=mongodb+srv://<username>:<password>@cluster0.t9zyrqz.mongodb.net/scrs_db?retryWrites=true&w=majority
    JWT_SECRET=super_secret_enterprise_jwt_key_2026
    JWT_EXPIRES_IN=30d
-   FRONTEND_URL=http://localhost:3000
+   FRONTEND_URL=http://localhost:5173
 
-   # Optional: Nodemailer SMTP Configuration (if omitted, runs in console preview mode)
+   # Admin seed account (used only if no admin exists in DB on first run)
+   ADMIN_DEFAULT_EMAIL=admin@scrs.com
+   ADMIN_DEFAULT_PASSWORD=adminpassword123
+
+   # Optional: Nodemailer SMTP (omit to run in console preview mode)
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
    SMTP_USER=your_email@gmail.com
    SMTP_PASS=your_app_specific_password
+   EMAIL_FROM="SCRS Enterprise Desk" <support@scrs.com>
 
-   # Optional: Cloudinary Configuration for Image Attachments
+   # Optional: Cloudinary (omit to skip file uploads)
    CLOUDINARY_CLOUD_NAME=your_cloud_name
    CLOUDINARY_API_KEY=your_api_key
    CLOUDINARY_API_SECRET=your_api_secret
@@ -295,7 +317,7 @@ The database is pre-seeded with **10 Users**, **6 Support Agents**, **2 Admins**
 
 ### 💻 2. Frontend Setup
 
-1. Open a second terminal and navigate to `scrs-frontend`:
+1. Navigate to `scrs-frontend` and install dependencies:
    ```powershell
    cd scrs-frontend
    npm install
@@ -310,7 +332,7 @@ The database is pre-seeded with **10 Users**, **6 Support Agents**, **2 Admins**
 3. Start the Vite development server:
    ```powershell
    npm run dev
-   # Frontend runs at http://localhost:3000 (or http://localhost:5173)
+   # Frontend runs at http://localhost:5173
    ```
 
 4. Build for production:
